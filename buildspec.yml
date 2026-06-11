@@ -5,19 +5,15 @@ phases:
     runtime-versions:
       python: 3.11
     commands:
-      - echo "Installing tools"
+      - echo "Installing dependencies"
       - pip install flask
       - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
       - mv ./bin/trivy /usr/local/bin/
 
   build:
     commands:
-      - echo "Running DevSecOps pipeline"
+      - echo "Running DevSecOps Security Pipeline"
       - python3 -m py_compile app.py
-      - echo "Running Trivy filesystem scan"
-      - trivy fs --exit-code 0 --severity HIGH,CRITICAL .
 
-artifacts:
-  files:
-    - app.py
-    - terraform/*
+      - echo "Running Trivy Security Scan (FAIL ON CRITICAL)"
+      - trivy fs --exit-code 1 --severity HIGH,CRITICAL .
