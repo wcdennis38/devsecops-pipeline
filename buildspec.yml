@@ -5,15 +5,26 @@ phases:
     runtime-versions:
       python: 3.11
     commands:
-      - echo "Installing Terraform..."
-      - yum install -y unzip curl
-      - TERRAFORM_VERSION="1.15.6"
-      - curl -o terraform.zip https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip
-      - unzip terraform.zip
-      - mv terraform /usr/local/bin/
+      - echo "Installing dependencies..."
+      - yum install -y yum-utils
+
+      # Install Terraform from official repo (NO ZIP, NO UNZIP)
+      - yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
+      - yum -y install terraform
+
       - terraform -version
+
+  pre_build:
+    commands:
+      - echo "Checking Terraform formatting..."
+      - terraform fmt -check -recursive || true
+
   build:
     commands:
-      - echo "Running Terraform plan..."
-      - terraform init
-      - terraform plan
+      - echo "Initializing Terraform..."
+      - cd terraform
+
+      - terraform init -input=false
+
+      - echo "Running Terraform Plan..."
+      - terraform plan -input=false
