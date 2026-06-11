@@ -5,14 +5,22 @@ phases:
     runtime-versions:
       python: 3.11
     commands:
-      - echo "Installing dependencies"
+      - echo "Installing tools"
       - pip install flask
+      - curl -o terraform.zip https://releases.hashicorp.com/terraform/1.6.6/terraform_1.6.6_linux_amd64.zip
+      - unzip terraform.zip
+      - mv terraform /usr/local/bin/
 
   build:
     commands:
-      - echo "Validating application"
+      - echo "Running DevSecOps checks"
       - python3 -m py_compile app.py
+      - cd terraform
+      - terraform init
+      - terraform validate
+      - terraform fmt -check
 
 artifacts:
   files:
     - app.py
+    - terraform/*
