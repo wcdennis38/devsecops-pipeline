@@ -5,36 +5,36 @@ phases:
     runtime-versions:
       python: 3.11
     commands:
-      - echo "Installing dependencies..."
-      - yum install -y unzip curl git yum-utils
+      - echo "Installing base tools..."
+      - yum install -y yum-utils curl git
+
       - echo "Installing Terraform..."
       - yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
       - yum -y install terraform
+
       - echo "Installing Trivy..."
       - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
       - install -m 755 ./bin/trivy /usr/local/bin/trivy
+
       - echo "Installing tfsec..."
       - curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash
+
       - terraform version
       - trivy --version
       - tfsec --version
 
   pre_build:
     commands:
-      - echo "Running Trivy filesystem scan..."
+      - echo "Running security scans..."
       - trivy fs . --severity HIGH,CRITICAL --exit-code 1
-      - echo "Running tfsec Terraform scan..."
-      - tfsec terraform --minimum-severity HIGH
+      - tfsec . --minimum-severity HIGH
 
   build:
     commands:
-      - echo "Changing to Terraform directory..."
+      - echo "Running Terraform..."
       - cd terraform
-      - echo "Initializing Terraform..."
       - terraform init -input=false
-      - echo "Validating Terraform..."
       - terraform validate
-      - echo "Creating Terraform plan..."
       - terraform plan -input=false -out=tfplan
 
 artifacts:
