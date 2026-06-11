@@ -7,14 +7,20 @@ phases:
     commands:
       - echo "Installing dependencies"
       - pip install flask
+      - echo "Installing Trivy"
       - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
       - mv ./bin/trivy /usr/local/bin/
 
+  pre_build:
+    commands:
+      - echo "Preparing security scan"
+
   build:
     commands:
-      - echo "Running DevSecOps Security Pipeline"
+      - echo "Checking Python syntax"
       - python3 -m py_compile app.py
-      - echo "Running Trivy scan"
+
+      - echo "Running Trivy security scan"
       - trivy fs --exit-code 1 --severity HIGH,CRITICAL .
 
 artifacts:
