@@ -5,42 +5,38 @@ phases:
     runtime-versions:
       python: 3.11
     commands:
-      - echo "Detecting OS package manager..."
-
-      # Detect package manager
-      - |
-        if command -v dnf >/dev/null 2>&1; then
-          PKG="dnf"
-        else
-          PKG="yum"
-        fi
-
-      - echo "Using package manager: $PKG"
-
-      # Install base tools safely
-      - $PKG install -y unzip curl git
-
-      # Install Terraform (safe method)
-      - curl -fsSL https://releases.hashicorp.com/terraform/1.9.5/terraform_1.9.5_linux_amd64.zip -o terraform.zip
-      - unzip terraform.zip
-      - mv terraform /usr/local/bin/
-      - terraform -version
-
-      # Install Trivy
+      - echo "Installing dependencies..."
+      - yum install -y unzip curl git yum-utils
+      - echo "Installing Terraform..."
+      - yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
+      - yum -y install terraform
+      - echo "Installing Trivy..."
       - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
-      - mv ./bin/trivy /usr/local/bin/
+      - install -m 755 ./bin/trivy /usr/local/bin/trivy
+      - echo "Installing tfsec..."
+      - curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash
+      - terraform version
+      - trivy --version
+      - tfsec --version
 
-      # Install tfsec
-      - curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash || true
+  pre_build:
+    commands:
+      - echo "Running Trivy filesystem scan..."
+      - trivy fs . --severity HIGH,CRITICAL --exit-code 1
+      - echo "Running tfsec Terraform scan..."
+      - tfsec terraform --minimum-severity HIGH
 
   build:
     commands:
-      - echo "Running Terraform pipeline..."
+      - echo "Changing to Terraform directory..."
       - cd terraform
+      - echo "Initializing Terraform..."
       - terraform init -input=false
+      - echo "Validating Terraform..."
       - terraform validate
-      - terraform plan -input=false
+      - echo "Creating Terraform plan..."
+      - terraform plan -input=false -out=tfplan
 
-      - echo "Running security scans..."
-      - trivy fs . --exit-code 1 --severity HIGH,CRITICAL || true
-      - tfsec . || true 
+artifacts:
+  files:
+    - '**/*'
