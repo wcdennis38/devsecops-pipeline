@@ -10,8 +10,8 @@ phases:
 
   build:
     commands:
-      - echo "Running DevSecOps build"
-      - python3 app.py
+      - echo "Validating application"
+      - python3 -m py_compile app.py
 
 artifacts:
   files:
