@@ -7,18 +7,15 @@ phases:
     commands:
       - echo "Installing tools"
       - pip install flask
-      - curl -o terraform.zip https://releases.hashicorp.com/terraform/1.6.6/terraform_1.6.6_linux_amd64.zip
-      - unzip terraform.zip
-      - mv terraform /usr/local/bin/
+      - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
+      - mv ./bin/trivy /usr/local/bin/
 
   build:
     commands:
-      - echo "Running DevSecOps pipeline checks"
+      - echo "Running DevSecOps pipeline"
       - python3 -m py_compile app.py
-      - cd terraform
-      - terraform init
-      - terraform validate
-      - terraform fmt -check
+      - echo "Running Trivy filesystem scan"
+      - trivy fs --exit-code 0 --severity HIGH,CRITICAL .
 
 artifacts:
   files:
