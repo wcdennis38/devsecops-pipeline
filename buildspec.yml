@@ -13,18 +13,26 @@ phases:
 
   pre_build:
     commands:
-      - echo "Preparing security scan"
+      - echo "=== SECURITY PHASE STARTING ==="
 
   build:
     commands:
-      - echo "Checking Python syntax"
+      - echo "Validating Python code"
       - python3 -m py_compile app.py
 
-      - echo "Running Trivy security scan"
-      - trivy fs --exit-code 1 --severity HIGH,CRITICAL .
+      - echo "Running Trivy filesystem scan (enterprise mode)"
+
+      # 1. Show clean readable output
+      - trivy fs . --severity HIGH,CRITICAL --format table
+
+      # 2. Fail ONLY on HIGH/CRITICAL vulnerabilities
+      - trivy fs . --severity HIGH,CRITICAL --exit-code 1
+
+      # 3. Generate report file for auditing (real DevSecOps feature)
+      - trivy fs . --severity HIGH,CRITICAL --format json -o trivy-report.json
 
 artifacts:
   files:
     - app.py
     - terraform/*
-    
+    - trivy-report.json
