@@ -9,13 +9,9 @@ phases:
       - pip install flask
 
   build:
-  commands:
-    - echo "Current directory:"
-    - pwd
-    - echo "Listing files:"
-    - ls -la
-    - echo "Running app"
-    - python3 app.py
+    commands:
+      - echo "Running DevSecOps build"
+      - python3 app.py
 
 artifacts:
   files:
