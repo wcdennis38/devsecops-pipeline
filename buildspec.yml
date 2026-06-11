@@ -5,40 +5,35 @@ phases:
     runtime-versions:
       python: 3.11
     commands:
-      - echo "Installing tools..."
-
-      # System tools
+      - echo "Installing dependencies..."
       - yum install -y unzip curl git
-
-      # Install Terraform (stable repo method)
-      - yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
-      - yum -y install terraform
-
-      # Install Trivy
-      - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
-      - mv ./bin/trivy /usr/local/bin/
-
-      # Install tfsec
-      - curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash
-      - mv ./tfsec /usr/local/bin/ || true
-
+      - TERRAFORM_VERSION="1.15.6"
+      - curl -o terraform.zip https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+      - unzip terraform.zip
+      - mv terraform /usr/local/bin/
       - terraform -version
-      - trivy -v || true
-      - tfsec --version || true
+      - echo "Installing Trivy..."
+      - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
+      - trivy --version
+      - echo "Installing tfsec..."
+      - curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash
+      - tfsec --version
 
   pre_build:
     commands:
-      - echo "Running security scans..."
-
-      # Scan filesystem for secrets & vulnerabilities
-      - trivy fs . --exit-code 1 --severity HIGH,CRITICAL || true
-
-      # Terraform security scan (FAIL build if issues)
-      - tfsec terraform --soft-fail=false || true
+      - echo "Initializing Terraform..."
+      - terraform init
 
   build:
     commands:
-      - echo "Running Terraform..."
-      - cd terraform
-      - terraform init -input=false
-      - terraform plan -input=false
+      - echo "Running Terraform plan..."
+      - terraform plan
+      - echo "Running tfsec security scan..."
+      - tfsec .
+      - echo "Running Trivy scan..."
+      - trivy fs --exit-code 1 --severity HIGH,CRITICAL .
+
+artifacts:
+  files:
+    - '**/*'
+  discard-paths: yes
