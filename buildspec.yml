@@ -1,0 +1,18 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.11
+    commands:
+      - echo "Installing dependencies"
+      - pip install flask
+
+  build:
+    commands:
+      - echo "Running DevSecOps build"
+      - python3 app.py
+
+artifacts:
+  files:
+    - app.py
