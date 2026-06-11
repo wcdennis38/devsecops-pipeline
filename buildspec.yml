@@ -6,34 +6,46 @@ phases:
       python: 3.11
     commands:
       - echo "Installing dependencies..."
-      - yum install -y unzip curl git
-      - TERRAFORM_VERSION="1.15.6"
-      - curl -o terraform.zip https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip
-      - unzip terraform.zip
-      - mv terraform /usr/local/bin/
-      - terraform -version
-      - echo "Installing Trivy..."
+      - yum install -y unzip curl git yum-utils
+
+      # Install Terraform
+      - yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
+      - yum -y install terraform
+
+      # Install Trivy
       - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
-      - trivy --version
-      - echo "Installing tfsec..."
+      - install -m 755 ./bin/trivy /usr/local/bin/trivy
+
+      # Install tfsec
       - curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash
+
+      # Verify tools
+      - terraform version
+      - trivy --version
       - tfsec --version
 
   pre_build:
     commands:
-      - echo "Initializing Terraform..."
-      - terraform init
+      - echo "Running Trivy filesystem scan..."
+      - trivy fs . --severity HIGH,CRITICAL --exit-code 1
+
+      - echo "Running tfsec Terraform scan..."
+      - tfsec terraform --minimum-severity HIGH
 
   build:
     commands:
-      - echo "Running Terraform plan..."
-      - terraform plan
-      - echo "Running tfsec security scan..."
-      - tfsec .
-      - echo "Running Trivy scan..."
-      - trivy fs --exit-code 1 --severity HIGH,CRITICAL .
+      - echo "Changing to Terraform directory..."
+      - cd terraform
+
+      - echo "Initializing Terraform..."
+      - terraform init -input=false
+
+      - echo "Validating Terraform..."
+      - terraform validate
+
+      - echo "Creating Terraform plan..."
+      - terraform plan -input=false -out=tfplan
 
 artifacts:
   files:
     - '**/*'
-  discard-paths: yes
