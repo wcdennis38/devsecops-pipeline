@@ -5,40 +5,47 @@ phases:
     runtime-versions:
       python: 3.11
     commands:
-      - echo "Installing Terraform..."
-      - curl -sSL https://releases.hashicorp.com/terraform/1.15.6/terraform_1.15.6_linux_amd64.zip -o terraform.zip
-      - python -m zipfile -e terraform.zip .
+      - echo "Setting up environment..."
+      - mkdir -p /tmp/terraform_install
+      - cd /tmp/terraform_install
+
+      # Install Terraform
+      - TERRAFORM_VERSION="1.15.6"
+      - curl -sSL https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip -o terraform.zip
+      - unzip -o terraform.zip
       - mv terraform /usr/local/bin/
-      - chmod +x /usr/local/bin/terraform
       - terraform version
 
-      - echo "Installing Trivy..."
-      - curl -sSL https://github.com/aquasecurity/trivy/releases/latest/download/trivy_$(uname -s)_$(uname -m).tar.gz -o trivy.tar.gz
-      - tar -xzf trivy.tar.gz
-      - mv trivy /usr/local/bin/
-      - chmod +x /usr/local/bin/trivy
+      # Install Trivy
+      - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
+      - install -m 755 ./bin/trivy /usr/local/bin/trivy
       - trivy --version
 
-      - echo "Installing tfsec..."
-      - curl -sSL https://github.com/aquasecurity/tfsec/releases/latest/download/tfsec-linux-amd64 -o tfsec
-      - mv tfsec /usr/local/bin/
-      - chmod +x /usr/local/bin/tfsec
+      # Install tfsec
+      - curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash
       - tfsec --version
 
   pre_build:
     commands:
-      - echo "Running security scans..."
+      - echo "Running Trivy filesystem scan..."
       - trivy fs . --severity HIGH,CRITICAL --exit-code 1
-      - tfsec . --minimum-severity HIGH
+      - echo "Running tfsec Terraform scan..."
+      - tfsec terraform --minimum-severity HIGH
 
   build:
     commands:
-      - echo "Running Terraform..."
+      - echo "Changing to Terraform directory..."
       - cd terraform
+
+      - echo "Initializing Terraform..."
       - terraform init -input=false
+
+      - echo "Validating Terraform..."
       - terraform validate
+
+      - echo "Creating Terraform plan..."
       - terraform plan -input=false -out=tfplan
 
 artifacts:
   files:
-    - "**/*"
+    - '**/*'
