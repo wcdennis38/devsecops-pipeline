@@ -5,22 +5,24 @@ phases:
     runtime-versions:
       python: 3.11
     commands:
-      - echo "Installing base tools..."
-      - yum install -y yum-utils curl git
-
       - echo "Installing Terraform..."
-      - yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
-      - yum -y install terraform
+      - curl -sSL https://releases.hashicorp.com/terraform/1.15.6/terraform_1.15.6_linux_amd64.zip -o terraform.zip
+      - python -m zipfile -e terraform.zip .
+      - mv terraform /usr/local/bin/
+      - chmod +x /usr/local/bin/terraform
+      - terraform version
 
       - echo "Installing Trivy..."
-      - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
-      - install -m 755 ./bin/trivy /usr/local/bin/trivy
+      - curl -sSL https://github.com/aquasecurity/trivy/releases/latest/download/trivy_$(uname -s)_$(uname -m).tar.gz -o trivy.tar.gz
+      - tar -xzf trivy.tar.gz
+      - mv trivy /usr/local/bin/
+      - chmod +x /usr/local/bin/trivy
+      - trivy --version
 
       - echo "Installing tfsec..."
-      - curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash
-
-      - terraform version
-      - trivy --version
+      - curl -sSL https://github.com/aquasecurity/tfsec/releases/latest/download/tfsec-linux-amd64 -o tfsec
+      - mv tfsec /usr/local/bin/
+      - chmod +x /usr/local/bin/tfsec
       - tfsec --version
 
   pre_build:
@@ -39,4 +41,4 @@ phases:
 
 artifacts:
   files:
-    - '**/*'
+    - "**/*"
