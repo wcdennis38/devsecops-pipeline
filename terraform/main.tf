@@ -1,7 +1,27 @@
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+    }
+    random = {
+      source  = "hashicorp/random"
+    }
+  }
+}
+
 provider "aws" {
   region = "us-east-1"
 }
 
+resource "random_id" "suffix" {
+  byte_length = 4
+}
+
 resource "aws_s3_bucket" "devsecops_bucket" {
-  bucket = "devsecops-demo-bucket-wcdennis38-2026-06-12-001"
+  bucket = "devsecops-demo-bucket-${random_id.suffix.hex}"
+}
+}
+
+resource "aws_s3_bucket" "devsecops_bucket" {
+  bucket = "devsecops-demo-bucket-${random_id.suffix.hex}"
 }
