@@ -8,7 +8,6 @@ phases:
       - echo "Installing Terraform..."
       - mkdir -p /tmp/terraform_install
       - cd /tmp/terraform_install
-
       - TERRAFORM_VERSION="1.15.6"
       - curl -sSL https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip -o terraform.zip
       - unzip -o terraform.zip
@@ -31,26 +30,14 @@ phases:
     commands:
       - echo "Returning to source directory..."
       - cd $CODEBUILD_SRC_DIR
-
-      - echo "Running Trivy scan..."
       - trivy fs . --severity HIGH,CRITICAL --exit-code 1
-
-      - echo "Running tfsec scan..."
-      - export PATH=$HOME/bin:$PATH
       - tfsec . --minimum-severity HIGH
 
   build:
     commands:
-      - echo "Entering Terraform directory..."
       - cd terraform
-
-      - echo "Initializing Terraform..."
       - terraform init -input=false
-
-      - echo "Validating Terraform..."
       - terraform validate
-
-      - echo "Creating Terraform plan..."
       - terraform plan -input=false -out=tfplan
 
 artifacts:
