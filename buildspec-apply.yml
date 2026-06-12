@@ -1,0 +1,9 @@
+version: 0.2
+
+phases:
+  build:
+    commands:
+      - echo "Running Terraform Apply..."
+      - cd terraform
+      - terraform init -input=false
+      - terraform apply -auto-approve tfplan
