@@ -22,15 +22,20 @@ phases:
       - trivy --version
 
       # Install tfsec
-      - curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash
+      - mkdir -p $HOME/bin
+      - curl -sSL https://github.com/aquasecurity/tfsec/releases/latest/download/tfsec-linux-amd64 -o $HOME/bin/tfsec
+      - chmod +x $HOME/bin/tfsec
+      - export PATH=$HOME/bin:$PATH
       - tfsec --version
 
   pre_build:
     commands:
       - echo "Running Trivy filesystem scan..."
       - trivy fs . --severity HIGH,CRITICAL --exit-code 1
+
       - echo "Running tfsec Terraform scan..."
-      - tfsec terraform --minimum-severity HIGH
+      - export PATH=$HOME/bin:$PATH
+      - tfsec ./terraform --minimum-severity HIGH
 
   build:
     commands:
