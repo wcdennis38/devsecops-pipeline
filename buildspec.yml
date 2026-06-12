@@ -5,23 +5,22 @@ phases:
     runtime-versions:
       python: 3.11
     commands:
-      - echo "Setting up environment..."
+      - echo "Installing Terraform..."
       - mkdir -p /tmp/terraform_install
       - cd /tmp/terraform_install
 
-      # Install Terraform
       - TERRAFORM_VERSION="1.15.6"
       - curl -sSL https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip -o terraform.zip
       - unzip -o terraform.zip
       - mv terraform /usr/local/bin/
       - terraform version
 
-      # Install Trivy
+      - echo "Installing Trivy..."
       - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
       - install -m 755 ./bin/trivy /usr/local/bin/trivy
       - trivy --version
 
-      # Install tfsec
+      - echo "Installing tfsec..."
       - mkdir -p $HOME/bin
       - curl -sSL https://github.com/aquasecurity/tfsec/releases/latest/download/tfsec-linux-amd64 -o $HOME/bin/tfsec
       - chmod +x $HOME/bin/tfsec
@@ -30,16 +29,19 @@ phases:
 
   pre_build:
     commands:
-      - echo "Running Trivy filesystem scan..."
+      - echo "Returning to source directory..."
+      - cd $CODEBUILD_SRC_DIR
+
+      - echo "Running Trivy scan..."
       - trivy fs . --severity HIGH,CRITICAL --exit-code 1
 
-      - echo "Running tfsec Terraform scan..."
+      - echo "Running tfsec scan..."
       - export PATH=$HOME/bin:$PATH
-      - tfsec ./terraform --minimum-severity HIGH
+      - tfsec . --minimum-severity HIGH
 
   build:
     commands:
-      - echo "Changing to Terraform directory..."
+      - echo "Entering Terraform directory..."
       - cd terraform
 
       - echo "Initializing Terraform..."
