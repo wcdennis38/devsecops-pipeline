@@ -3,5 +3,5 @@ provider "aws" {
 }
 
 resource "aws_s3_bucket" "devsecops_bucket" {
-  bucket = "devsecops-demo-bucket-123456789"
+  bucket = "devsecops-demo-bucket-wcdennis38-2026-06-12-001"
 }
