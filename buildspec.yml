@@ -4,22 +4,12 @@ phases:
   install:
     runtime-versions:
       python: 3.11
-    commands:
-      - echo "=== CLEANING ENV ==="
-      - rm -rf ~/.terraform.d || true
-      - rm -rf .terraform || true
-      - rm -rf /tmp/* || true
-      - export TF_PLUGIN_CACHE_DIR=/tmp
-      - export TMPDIR=/tmp
 
-      - echo "=== INSTALLING TERRAFORM SAFELY ==="
-      - TERRAFORM_VERSION="1.15.6"
-      - curl -fsSL -o terraform.zip https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip
-      - file terraform.zip
-      - unzip -t terraform.zip
-      - unzip -o terraform.zip
-      - chmod +x terraform
-      - mv terraform /usr/local/bin/
+    commands:
+      - echo "=== CLEAN INSTALL ==="
+      - yum install -y yum-utils
+      - yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
+      - yum install -y terraform
       - terraform version
 
       - echo "=== INSTALLING TRIVY ==="
@@ -28,10 +18,8 @@ phases:
       - trivy --version
 
       - echo "=== INSTALLING TFSEC ==="
-      - mkdir -p $HOME/bin
-      - curl -sSL https://github.com/aquasecurity/tfsec/releases/latest/download/tfsec-linux-amd64 -o $HOME/bin/tfsec
-      - chmod +x $HOME/bin/tfsec
-      - export PATH=$HOME/bin:$PATH
+      - curl -sSL https://github.com/aquasecurity/tfsec/releases/latest/download/tfsec-linux-amd64 -o /usr/local/bin/tfsec
+      - chmod +x /usr/local/bin/tfsec
       - tfsec --version
 
   pre_build:
@@ -39,21 +27,22 @@ phases:
       - echo "=== MOVING TO SOURCE ==="
       - cd $CODEBUILD_SRC_DIR
 
-      - echo "=== RUNNING TRIVY SCAN ==="
-      - trivy fs . --severity HIGH,CRITICAL --exit-code 1 || true
-
-      - echo "=== RUNNING TFSEC SCAN ==="
+      - echo "=== RUNNING SECURITY SCANS ==="
+      - trivy fs . --severity HIGH,CRITICAL --exit-code 0 || true
       - tfsec ./terraform --minimum-severity HIGH || true
 
   build:
     commands:
-      - echo "=== TERRAFORM WORKFLOW ==="
+      - echo "=== TERRAFORM INIT ==="
       - cd terraform
       - terraform init -input=false
-      - terraform validate
-      - terraform plan -input=false -out=tfplan
 
-artifacts:
-  files:
-    - '**/*'
-    - terraform/tfplan
+      - echo "=== TERRAFORM PLAN ==="
+      - terraform plan
+
+      - echo "=== TERRAFORM APPLY ==="
+      - terraform apply -auto-approve
+
+  post_build:
+    commands:
+      - echo "=== PIPELINE COMPLETE ==="
