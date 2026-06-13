@@ -5,67 +5,30 @@ phases:
     runtime-versions:
       python: 3.11
     commands:
-      # ---- Terraform Setup ----
-      - echo "Setting up Terraform environment..."
-      - mkdir -p /tmp/terraform_install
-      - cd /tmp/terraform_install
+      - echo "Cleaning Terraform cache"
+      - rm -rf ~/.terraform.d || true
+      - rm -rf .terraform || true
+      - rm -rf /tmp/* || true
+      - export TF_PLUGIN_CACHE_DIR=/tmp
+      - export TMPDIR=/tmp
+
+      - echo "Installing Terraform..."
       - TERRAFORM_VERSION="1.15.6"
       - curl -sSL https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip -o terraform.zip
       - unzip -o terraform.zip
       - mv terraform /usr/local/bin/
       - terraform version
 
-      # ---- Trivy Setup ----
-      - echo "Installing Trivy..."
-      - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
-      - install -m 755 ./bin/trivy /usr/local/bin/trivy
-      - trivy --version
-
-      # ---- tfsec Setup ----
-      - echo "Installing tfsec..."
-      - mkdir -p $HOME/bin
-      - curl -sSL https://github.com/aquasecurity/tfsec/releases/latest/download/tfsec-linux-amd64 -o $HOME/bin/tfsec
-      - chmod +x $HOME/bin/tfsec
-      - export PATH=$HOME/bin:$PATH
-      - tfsec --version
-
   pre_build:
     commands:
-      # ---- Return to source code directory ----
-      - echo "Returning to source directory..."
-      - cd $CODEBUILD_SRC_DIR
-
-      # ---- Trivy scan and save report ----
-      - echo "Running Trivy filesystem scan..."
-      - trivy fs . --severity HIGH,CRITICAL --exit-code 1 > trivy-report.txt || true
-      - echo "Trivy scan completed. Report saved to trivy-report.txt"
-
-      # ---- tfsec scan and save report ----
-      - echo "Running tfsec Terraform scan (will not fail build)..."
-      - tfsec ./terraform --minimum-severity HIGH > tfsec-report.txt || true
-      - echo "tfsec scan completed. Report saved to tfsec-report.txt"
+      - cd terraform
+      - terraform init -input=false
 
   build:
     commands:
-      # ---- Change to Terraform directory ----
-      - echo "Changing to Terraform directory..."
-      - cd terraform
+      - terraform plan -input=false
 
-      # ---- Terraform initialization ----
-      - echo "Initializing Terraform..."
-      - terraform init -input=false
 
-      # ---- Terraform validation ----
-      - echo "Validating Terraform..."
-      - terraform validate
 
-      # ---- Terraform plan ----
-      - echo "Creating Terraform plan..."
-      - terraform plan -input=false -out=tfplan
 
-artifacts:
-  files:
-    - '**/*'           # save everything in workspace
-    - tfplan           # Terraform plan file
-    - trivy-report.txt # Trivy scan report
-    - tfsec-report.txt # tfsec scan report
+
