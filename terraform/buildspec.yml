@@ -1,0 +1,19 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - echo "Cleaning workspace"
+      - rm -rf .terraform
+      - rm -rf ~/.terraform
+      - rm -rf ~/.terraform.d
+
+      - echo "Setting plugin cache to /tmp"
+      - export TF_PLUGIN_CACHE_DIR=/tmp/terraform-plugin-cache
+      - mkdir -p /tmp/terraform-plugin-cache
+
+  build:
+    commands:
+      - terraform init -reconfigure -input=false
+      - terraform plan -out=tfplan
+
