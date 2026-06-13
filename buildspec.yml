@@ -5,30 +5,61 @@ phases:
     runtime-versions:
       python: 3.11
     commands:
-      - echo "Cleaning Terraform cache"
+      - echo "=== CLEANING ENVIRONMENT ==="
       - rm -rf ~/.terraform.d || true
       - rm -rf .terraform || true
       - rm -rf /tmp/* || true
       - export TF_PLUGIN_CACHE_DIR=/tmp
       - export TMPDIR=/tmp
 
-      - echo "Installing Terraform..."
+      - echo "=== INSTALLING TERRAFORM SAFELY ==="
       - TERRAFORM_VERSION="1.15.6"
-      - curl -sSL https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip -o terraform.zip
+      - curl -fsSL -o terraform.zip https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+      - echo "Verifying download..."
+      - file terraform.zip
       - unzip -o terraform.zip
+      - chmod +x terraform
       - mv terraform /usr/local/bin/
       - terraform version
 
+      - echo "=== INSTALLING TRIVY ==="
+      - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
+      - install -m 755 ./bin/trivy /usr/local/bin/trivy
+      - trivy --version
+
+      - echo "=== INSTALLING TFSEC ==="
+      - mkdir -p $HOME/bin
+      - curl -sSL https://github.com/aquasecurity/tfsec/releases/latest/download/tfsec-linux-amd64 -o $HOME/bin/tfsec
+      - chmod +x $HOME/bin/tfsec
+      - export PATH=$HOME/bin:$PATH
+      - tfsec --version
+
   pre_build:
     commands:
-      - cd terraform
-      - terraform init -input=false
+      - echo "=== MOVING TO SOURCE DIR ==="
+      - cd $CODEBUILD_SRC_DIR
+
+      - echo "=== RUNNING TRIVY SCAN ==="
+      - trivy fs . --severity HIGH,CRITICAL --exit-code 1 || true
+
+      - echo "=== RUNNING TFSEC SCAN ==="
+      - tfsec ./terraform --minimum-severity HIGH || true
 
   build:
     commands:
-      - terraform plan -input=false
+      - echo "=== MOVING TO TERRAFORM DIR ==="
+      - cd terraform
 
+      - echo "=== INITIALIZING TERRAFORM ==="
+      - terraform init -input=false
 
+      - echo "=== VALIDATING TERRAFORM ==="
+      - terraform validate
 
+      - echo "=== PLANNING INFRASTRUCTURE ==="
+      - terraform plan -input=false -out=tfplan
 
-
+artifacts:
+  files:
+    - '**/*'
+    - terraform/tfplan
