@@ -5,7 +5,7 @@ phases:
     runtime-versions:
       python: 3.11
     commands:
-      - echo "=== CLEANING ENVIRONMENT ==="
+      - echo "=== CLEANING ENV ==="
       - rm -rf ~/.terraform.d || true
       - rm -rf .terraform || true
       - rm -rf /tmp/* || true
@@ -15,8 +15,8 @@ phases:
       - echo "=== INSTALLING TERRAFORM SAFELY ==="
       - TERRAFORM_VERSION="1.15.6"
       - curl -fsSL -o terraform.zip https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip
-      - echo "Verifying download..."
       - file terraform.zip
+      - unzip -t terraform.zip
       - unzip -o terraform.zip
       - chmod +x terraform
       - mv terraform /usr/local/bin/
@@ -36,7 +36,7 @@ phases:
 
   pre_build:
     commands:
-      - echo "=== MOVING TO SOURCE DIR ==="
+      - echo "=== MOVING TO SOURCE ==="
       - cd $CODEBUILD_SRC_DIR
 
       - echo "=== RUNNING TRIVY SCAN ==="
@@ -47,16 +47,10 @@ phases:
 
   build:
     commands:
-      - echo "=== MOVING TO TERRAFORM DIR ==="
+      - echo "=== TERRAFORM WORKFLOW ==="
       - cd terraform
-
-      - echo "=== INITIALIZING TERRAFORM ==="
       - terraform init -input=false
-
-      - echo "=== VALIDATING TERRAFORM ==="
       - terraform validate
-
-      - echo "=== PLANNING INFRASTRUCTURE ==="
       - terraform plan -input=false -out=tfplan
 
 artifacts:
