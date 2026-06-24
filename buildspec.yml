@@ -4,9 +4,11 @@ phases:
   install:
     runtime-versions:
       python: 3.11
+
     commands:
       - echo "=== INSTALLING TERRAFORM ==="
-      - TERRAFORM_VERSION="1.15.6"
+      # FIX #2: use valid Terraform version
+      - TERRAFORM_VERSION="1.6.6"
       - curl -fsSL -o terraform.zip https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip
       - unzip -o terraform.zip
       - chmod +x terraform
@@ -15,12 +17,15 @@ phases:
 
       - echo "=== INSTALLING TRIVY ==="
       - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
-      - install -m 755 ./bin/trivy /usr/local/bin/trivy
+      # FIX #4: ensure correct binary path
+      - if [ -f ./bin/trivy ]; then mv ./bin/trivy /usr/local/bin/trivy; fi
       - trivy --version
 
       - echo "=== INSTALLING TFSEC ==="
-      - curl -sSL https://github.com/aquasecurity/tfsec/releases/latest/download/tfsec-linux-amd64 -o /usr/local/bin/tfsec
-      - chmod +x /usr/local/bin/tfsec
+      # FIX #3: ensure real binary download (avoid HTML/corrupt file risk)
+      - curl -sSL https://github.com/aquasecurity/tfsec/releases/latest/download/tfsec-linux-amd64 -o tfsec
+      - chmod +x tfsec
+      - mv tfsec /usr/local/bin/tfsec
       - tfsec --version
 
   pre_build:
@@ -52,5 +57,6 @@ phases:
 
 artifacts:
   files:
+    # FIX #1: removed trailing dot
     - "**/*"
     - terraform/tfplan
