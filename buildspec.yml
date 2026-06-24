@@ -6,15 +6,15 @@ phases:
       python: 3.11
 
     commands:
-      - echo "=== CLEAN INSTALL ==="
-      - yum install -y yum-utils
-      - yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
-      - yum install -y terraform
+      - echo "=== INSTALLING TERRAFORM ==="
+      - TERRAFORM_VERSION="1.15.6"
+      - curl -fsSL -o terraform.zip https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+      - unzip -o terraform.zip
+      - mv terraform /usr/local/bin/
       - terraform version
 
       - echo "=== INSTALLING TRIVY ==="
       - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
-      - install -m 755 ./bin/trivy /usr/local/bin/trivy
       - trivy --version
 
       - echo "=== INSTALLING TFSEC ==="
@@ -22,14 +22,18 @@ phases:
       - chmod +x /usr/local/bin/tfsec
       - tfsec --version
 
+
   pre_build:
     commands:
-      - echo "=== MOVING TO SOURCE ==="
+      - echo "=== MOVE TO SOURCE ==="
       - cd $CODEBUILD_SRC_DIR
 
-      - echo "=== RUNNING SECURITY SCANS ==="
-      - trivy fs . --severity HIGH,CRITICAL --exit-code 0 || true
-      - tfsec ./terraform --minimum-severity HIGH || true
+      - echo "=== SECURITY SCAN (TRIVY) ==="
+      - trivy fs . --severity HIGH,CRITICAL
+
+      - echo "=== SECURITY SCAN (TFSEC) ==="
+      - tfsec ./terraform --minimum-severity HIGH
+
 
   build:
     commands:
@@ -37,12 +41,18 @@ phases:
       - cd terraform
       - terraform init -input=false
 
+      - echo "=== TERRAFORM VALIDATE ==="
+      - terraform validate
+
       - echo "=== TERRAFORM PLAN ==="
-      - terraform plan
+      - terraform plan -input=false -out=tfplan
 
-      - echo "=== TERRAFORM APPLY ==="
-      - terraform apply -auto-approve
+artifacts:
+  files:
+    - '**/*'
+    - terraform/tfplan
 
-  post_build:
-    commands:
-      - echo "=== PIPELINE COMPLETE ==="
+
+post_build:
+  commands:
+    - echo "=== PIPELINE COMPLETE SUCCESSFULLY ==="
