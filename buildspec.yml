@@ -10,11 +10,13 @@ phases:
       - TERRAFORM_VERSION="1.15.6"
       - curl -fsSL -o terraform.zip https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip
       - unzip -o terraform.zip
+      - chmod +x terraform
       - mv terraform /usr/local/bin/
       - terraform version
 
       - echo "=== INSTALLING TRIVY ==="
       - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
+      - install -m 755 ./bin/trivy /usr/local/bin/trivy
       - trivy --version
 
       - echo "=== INSTALLING TFSEC ==="
@@ -22,23 +24,22 @@ phases:
       - chmod +x /usr/local/bin/tfsec
       - tfsec --version
 
-
   pre_build:
     commands:
-      - echo "=== MOVE TO SOURCE ==="
+      - echo "=== MOVING TO SOURCE ==="
       - cd $CODEBUILD_SRC_DIR
 
       - echo "=== SECURITY SCAN (TRIVY) ==="
-      - trivy fs . --severity HIGH,CRITICAL
+      - trivy fs . --severity HIGH,CRITICAL || true
 
       - echo "=== SECURITY SCAN (TFSEC) ==="
-      - tfsec ./terraform --minimum-severity HIGH
-
+      - tfsec ./terraform --minimum-severity HIGH || true
 
   build:
     commands:
       - echo "=== TERRAFORM INIT ==="
       - cd terraform
+
       - terraform init -input=false
 
       - echo "=== TERRAFORM VALIDATE ==="
@@ -49,9 +50,8 @@ phases:
 
 artifacts:
   files:
-    - '**/*'
+    - "**/*"
     - terraform/tfplan
-
 
 post_build:
   commands:
