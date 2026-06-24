@@ -1,58 +1,64 @@
 version: 0.2
 
 phases:
-  install:
-    runtime-versions:
-      python: 3.11
+install:
+runtime-versions:
+python: 3.11
 
-    commands:
-      - echo "=== INSTALLING TERRAFORM ==="
-      - TERRAFORM_VERSION="1.15.6"
-      - curl -fsSL -o terraform.zip https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip
-      - unzip -o terraform.zip
-      - chmod +x terraform
-      - mv terraform /usr/local/bin/
-      - terraform version
+```
+commands:
+  - echo "=== INSTALLING TERRAFORM ==="
+  - TERRAFORM_VERSION="1.15.6"
+  - curl -fsSL -o terraform.zip https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+  - unzip -o terraform.zip
+  - chmod +x terraform
+  - mv terraform /usr/local/bin/
+  - terraform version
 
-      - echo "=== INSTALLING TRIVY ==="
-      - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
-      - install -m 755 ./bin/trivy /usr/local/bin/trivy
-      - trivy --version
+  - echo "=== INSTALLING TRIVY ==="
+  - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
+  - install -m 755 ./bin/trivy /usr/local/bin/trivy
+  - trivy --version
 
-      - echo "=== INSTALLING TFSEC ==="
-      - curl -sSL https://github.com/aquasecurity/tfsec/releases/latest/download/tfsec-linux-amd64 -o /usr/local/bin/tfsec
-      - chmod +x /usr/local/bin/tfsec
-      - tfsec --version
+  - echo "=== INSTALLING TFSEC ==="
+  - curl -sSL https://github.com/aquasecurity/tfsec/releases/latest/download/tfsec-linux-amd64 -o /usr/local/bin/tfsec
+  - chmod +x /usr/local/bin/tfsec
+  - tfsec --version
+```
 
-  pre_build:
-    commands:
-      - echo "=== MOVING TO SOURCE ==="
-      - cd $CODEBUILD_SRC_DIR
+pre_build:
+commands:
+- echo "=== MOVING TO SOURCE ==="
+- cd $CODEBUILD_SRC_DIR
 
-      - echo "=== SECURITY SCAN (TRIVY) ==="
-      - trivy fs . --severity HIGH,CRITICAL || true
+```
+  - echo "=== SECURITY SCAN (TRIVY) ==="
+  - trivy fs . --severity HIGH,CRITICAL || true
 
-      - echo "=== SECURITY SCAN (TFSEC) ==="
-      - tfsec ./terraform --minimum-severity HIGH || true
+  - echo "=== SECURITY SCAN (TFSEC) ==="
+  - tfsec ./terraform --minimum-severity HIGH || true
+```
 
-  build:
-    commands:
-      - echo "=== TERRAFORM INIT ==="
-      - cd terraform
+build:
+commands:
+- echo "=== TERRAFORM INIT ==="
+- cd terraform
 
-      - terraform init -input=false
+```
+  - terraform init -input=false
 
-      - echo "=== TERRAFORM VALIDATE ==="
-      - terraform validate
+  - echo "=== TERRAFORM VALIDATE ==="
+  - terraform validate
 
-      - echo "=== TERRAFORM PLAN ==="
-      - terraform plan -input=false -out=tfplan
+  - echo "=== TERRAFORM PLAN ==="
+  - terraform plan -input=false -out=tfplan
+```
 
 artifacts:
-  files:
-    - "**/*"
-    - terraform/tfplan
+files:
+- "**/*"
+- terraform/tfplan
 
 post_build:
-  commands:
-    - echo "=== PIPELINE COMPLETE SUCCESSFULLY ==="
+commands:
+- echo "=== PIPELINE COMPLETE SUCCESSFULLY ==="
