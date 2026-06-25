@@ -30,11 +30,11 @@ phases:
       - echo "=== MOVE TO SOURCE ==="
       - cd $CODEBUILD_SRC_DIR
 
-      - echo "=== SECURITY SCAN (TRIVY) ==="
-      - trivy fs . --severity HIGH,CRITICAL || true
+      - echo "=== TRIVY CRITICAL SECURITY SCAN ==="
+      - trivy fs . --severity CRITICAL --exit-code 1
 
-      - echo "=== SECURITY SCAN (TFSEC) ==="
-      - tfsec ./terraform --minimum-severity HIGH || true
+      - echo "=== TFSEC CRITICAL TERRAFORM SCAN ==="
+      - tfsec ./terraform --minimum-severity CRITICAL
 
   build:
     commands:
