@@ -1,25 +1,40 @@
-version: 0.2
+from flask import Flask
+from flask_wtf.csrf import CSRFProtect
+import os
 
-phases:
-  install:
-    commands:
-      - echo "Installing Terraform..."
-      - yum install -y yum-utils
-      - yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
-      - yum install -y terraform
-      - terraform version
+app = Flask(__name__)
 
-  pre_build:
-    commands:
-      - echo "Changing to terraform directory..."
-      - cd terraform
-      - terraform init -input=false
+# =========================
+# SECURITY CONFIGURATION
+# =========================
 
-  build:
-    commands:
-      - echo "Running Terraform Apply..."
-      - terraform apply -auto-approve
+SECRET_KEY = os.getenv("FLASK_APP_KEY")
 
-artifacts:
-  files:
-    - "**/*"
+if not SECRET_KEY:
+    raise RuntimeError("FLASK_APP_KEY environment variable is required")
+
+app.config.update(
+    SECRET_KEY=SECRET_KEY
+)
+
+# Enable CSRF protection
+csrf = CSRFProtect(app)
+
+# =========================
+# ROUTES
+# =========================
+
+@app.route("/", methods=["GET"])
+def home():
+    return {
+        "status": "ok",
+        "message": "DevSecOps Pipeline Running in AWS!"
+    }, 200
+
+
+# =========================
+# LOCAL DEV ONLY
+# =========================
+
+if __name__ == "__main__":
+    app.run(host="127.0.0.1", port=8080, debug=False)
