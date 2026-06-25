@@ -4,8 +4,11 @@ import os
 
 app = Flask(__name__)
 
-# STRICT: fail fast if secret is missing (best practice for CI/CD)
-app.config["SECRET_KEY"] = os.environ["SECRET_KEY"]
+secret_key = os.environ.get("SECRET_KEY")
+if not secret_key:
+    raise RuntimeError("SECRET_KEY environment variable is required")
+
+app.config["SECRET_KEY"] = secret_key
 
 csrf = CSRFProtect(app)
 
