@@ -50,7 +50,7 @@ phases:
 
   post_build:
     commands:
-      - echo "=== PIPELINE COMPLETE SUCCESSFULLY ==="
+      - echo "=== PIPELINE COMPLETED SUCCESSFULLY ==="
 
 artifacts:
   files:
