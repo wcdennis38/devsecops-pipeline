@@ -16,6 +16,19 @@ jobs:
 
       - name: Install Trivy
         run: |
+        HEAD
+
+        HEAD
+          set -euo pipefail
+
+          sudo apt-get update
+          sudo apt-get install -y wget
+          wget https://github.com/aquasecurity/trivy/releases/download/v0.71.2/trivy_0.71.2_Linux-64bit.deb
+          sudo dpkg -i trivy_0.55.0_Linux-64bit.deb
+         c34b873 (Update DevSecOps pipeline fixes)
+
+          echo "Installing Trivy..."
+        628b635 (Add .dockerignore to prevent sensitive data leakage)
           curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
             | sudo sh -s -- -b /usr/local/bin
 
