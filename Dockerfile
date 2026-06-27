@@ -1,11 +1,29 @@
-FROM python:3.11-slim
+# Use official lightweight Node image
+FROM node:20-alpine
 
+# Create non-root user (fixes Trivy DS-0002)
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+# Set working directory
 WORKDIR /app
 
-COPY app.py /app/
+# Copy dependency files first (better caching)
+COPY package*.json ./
 
-RUN pip install flask
+# Install dependencies
+RUN npm ci --only=production
 
-EXPOSE 5000
+# Copy application source
+COPY . .
 
-CMD ["python", "app.py"]
+# Fix permissions for non-root user
+RUN chown -R appuser:appgroup /app
+
+# Switch to non-root user (IMPORTANT)
+USER appuser
+
+# Expose app port (change if needed)
+EXPOSE 3000
+
+# Start application
+CMD ["npm", "start"]
