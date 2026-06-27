@@ -1,29 +1,15 @@
-# Use official lightweight Node image
-FROM node:20-alpine
+FROM python:3.11-slim
 
-# Create non-root user (fixes Trivy DS-0002)
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-
-# Set working directory
 WORKDIR /app
 
-# Copy dependency files first (better caching)
-COPY package*.json ./
-
-# Install dependencies
-RUN npm ci --only=production
-
-# Copy application source
 COPY . .
 
-# Fix permissions for non-root user
-RUN chown -R appuser:appgroup /app
+RUN pip install -r requirements.txt
 
-# Switch to non-root user (IMPORTANT)
+RUN useradd -m appuser
 USER appuser
 
-# Expose app port (change if needed)
-EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+  CMD curl -f http://localhost:8080/health || exit 1
 
-# Start application
-CMD ["npm", "start"]
+CMD ["python", "app/main.py"]
