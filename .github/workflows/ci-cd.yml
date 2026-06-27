@@ -1,5 +1,9 @@
 name: DevSecOps CI/CD Pipeline
 
+permissions:
+  contents: read
+  id-token: write
+
 on:
   push:
     branches: ["main"]
@@ -64,3 +68,17 @@ jobs:
 
       - name: Terraform Validate
         run: terraform validate
+
+- name: Configure AWS credentials (OIDC)
+  uses: aws-actions/configure-aws-credentials@v4
+  with:
+    role-to-assume: arn:aws:iam::150460248370:role/dev-sec-ops-role
+    aws-region: us-east-1
+
+- name: Run Trivy config scan
+  uses: aquasecurity/trivy-action@0.24.0
+  with:
+    scan-type: config
+    format: table
+    exit-code: 1
+    severity: HIGH,CRITICAL

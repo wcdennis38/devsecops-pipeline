@@ -1,4 +1,10 @@
-# Terraform
+# Security & DevSecOps
+.trivycache/
+.terraform/
 *.tfstate
 *.tfstate.*
-.terraform
+.env
+*.pem
+*.key
+__pycache__/
+node_modules/
