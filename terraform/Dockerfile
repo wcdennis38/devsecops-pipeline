@@ -1,19 +1,17 @@
-# Lightweight Python base image
 FROM python:3.11-slim
 
-# Set working directory
 WORKDIR /app
 
-# Copy application code
-COPY app.py /app/
+COPY . .
 
-# Install dependencies (if you expand later)
-RUN pip install --no-cache-dir flask
+RUN apt-get update && apt-get install -y curl
 
-# Expose port
-EXPOSE 5000
+RUN pip install -r requirements.txt
 
-# Run application
-CMD ["python", "app.py"]
+RUN useradd -m appuser
+USER appuser
+
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
   CMD curl -f http://localhost:8080/health || exit 1
+
+CMD ["python", "app/main.py"]
