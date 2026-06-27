@@ -6,3 +6,4 @@
 .trivycache/
 **/.trivycache/
 *.db
+.trivycache/
