@@ -2,3 +2,7 @@
 *.tfstate
 *.tfstate.*
 .terraform
+# Trivy cache (NEVER COMMIT)
+.trivycache/
+**/.trivycache/
+*.db
