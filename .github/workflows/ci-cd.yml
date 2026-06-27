@@ -14,31 +14,23 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Install Trivy (safe & stable)
+      - name: Install Trivy
         run: |
-          set -euo pipefail
-
-          echo "Installing Trivy..."
           curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
             | sudo sh -s -- -b /usr/local/bin
 
-          echo "Verifying installation..."
           trivy version
 
-      - name: Trivy Filesystem Scan (Vuln + Secrets)
+      - name: Trivy FS Scan
         run: |
-          set -euo pipefail
-
           trivy fs \
             --scanners vuln,secret \
             --severity HIGH,CRITICAL \
             --exit-code 1 \
             .
 
-      - name: Trivy Config Scan (IaC security)
+      - name: Trivy Config Scan
         run: |
-          set -euo pipefail
-
           trivy config \
             --severity HIGH,CRITICAL \
             --exit-code 1 \
@@ -54,7 +46,6 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          set -euo pipefail
           docker build -t devsecops-app:${{ github.sha }} .
 
   terraform:
@@ -69,11 +60,7 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
-        run: |
-          set -euo pipefail
-          terraform init
+        run: terraform init
 
       - name: Terraform Validate
-        run: |
-          set -euo pipefail
-          terraform validate
+        run: terraform validate
