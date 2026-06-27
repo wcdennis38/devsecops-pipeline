@@ -1,0 +1,29 @@
+# Git metadata (VERY IMPORTANT)
+.git
+.gitignore
+
+# Environment / secrets
+.env
+.env.*
+*.pem
+*.key
+
+# Dependencies
+node_modules
+
+# Logs
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Terraform (prevents leaking infra state/secrets)
+terraform/
+*.tfstate
+*.tfstate.*
+
+# CI/CD configs (optional but recommended)
+.github/
+
+# OS files
+.DS_Store
+Thumbs.db
