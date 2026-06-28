@@ -19,15 +19,25 @@ resource "random_id" "suffix" {
   byte_length = 4
 }
 
-# -----------------------------
-# LOG BUCKET (CIS REQUIREMENT FIX)
-# -----------------------------
+# =====================================================
+# LOG BUCKET (FULLY HARDENED - FIXES CIS FINDINGS)
+# =====================================================
 resource "aws_s3_bucket" "log_bucket" {
   bucket = "prod-logs-${random_id.suffix.hex}"
 }
 
-resource "aws_s3_bucket_public_access_block" "log_block" {
+resource "aws_s3_bucket_ownership_controls" "log" {
   bucket = aws_s3_bucket.log_bucket.id
+
+  rule {
+    object_ownership = "BucketOwnerPreferred"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "log" {
+  bucket = aws_s3_bucket.log_bucket.id
+
+  depends_on = [aws_s3_bucket_ownership_controls.log]
 
   block_public_acls       = true
   block_public_policy     = true
@@ -35,8 +45,20 @@ resource "aws_s3_bucket_public_access_block" "log_block" {
   restrict_public_buckets = true
 }
 
-resource "aws_s3_bucket_server_side_encryption_configuration" "log_enc" {
+resource "aws_s3_bucket_versioning" "log" {
   bucket = aws_s3_bucket.log_bucket.id
+
+  depends_on = [aws_s3_bucket_public_access_block.log]
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "log" {
+  bucket = aws_s3_bucket.log_bucket.id
+
+  depends_on = [aws_s3_bucket_versioning.log]
 
   rule {
     apply_server_side_encryption_by_default {
@@ -45,9 +67,9 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "log_enc" {
   }
 }
 
-# -----------------------------
+# =====================================================
 # MAIN BUCKET
-# -----------------------------
+# =====================================================
 resource "aws_s3_bucket" "main" {
   bucket = "prod-bucket-${random_id.suffix.hex}"
 }
@@ -93,19 +115,24 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "main" {
   }
 }
 
-# -----------------------------
-# LOGGING (FIXES "DISABLED LOGGING" WARNING)
-# -----------------------------
+# =====================================================
+# LOGGING (NOW CIS SAFE)
+# =====================================================
 resource "aws_s3_bucket_logging" "main" {
   bucket = aws_s3_bucket.main.id
+
+  depends_on = [
+    aws_s3_bucket_server_side_encryption_configuration.main,
+    aws_s3_bucket_server_side_encryption_configuration.log
+  ]
 
   target_bucket = aws_s3_bucket.log_bucket.id
   target_prefix = "access-logs/"
 }
 
-# -----------------------------
+# =====================================================
 # HTTPS ONLY POLICY (CIS REQUIRED)
-# -----------------------------
+# =====================================================
 resource "aws_s3_bucket_policy" "main" {
   bucket = aws_s3_bucket.main.id
 
@@ -133,6 +160,9 @@ resource "aws_s3_bucket_policy" "main" {
   })
 }
 
+# =====================================================
+# OUTPUT
+# =====================================================
 output "bucket_name" {
   value = aws_s3_bucket.main.bucket
 }
