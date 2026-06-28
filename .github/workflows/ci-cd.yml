@@ -6,7 +6,7 @@ deploy:
 
   steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+  uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
 
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
