@@ -4,7 +4,6 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
-
     random = {
       source  = "hashicorp/random"
       version = "~> 3.6"
@@ -16,23 +15,15 @@ provider "aws" {
   region = "us-east-1"
 }
 
-# -----------------------------
-# RANDOM SUFFIX
-# -----------------------------
 resource "random_id" "suffix" {
   byte_length = 4
 }
 
-# =========================================================
-# LOG BUCKET (FIXES LOGGING SECURITY WARNING)
-# =========================================================
+# -----------------------------
+# LOG BUCKET (CIS REQUIREMENT FIX)
+# -----------------------------
 resource "aws_s3_bucket" "log_bucket" {
-  bucket = "devsecops-logs-${random_id.suffix.hex}"
-
-  tags = {
-    Purpose = "access-logs"
-    Owner   = "wcdennis38"
-  }
+  bucket = "prod-logs-${random_id.suffix.hex}"
 }
 
 resource "aws_s3_bucket_public_access_block" "log_block" {
@@ -44,7 +35,7 @@ resource "aws_s3_bucket_public_access_block" "log_block" {
   restrict_public_buckets = true
 }
 
-resource "aws_s3_bucket_server_side_encryption_configuration" "log_encryption" {
+resource "aws_s3_bucket_server_side_encryption_configuration" "log_enc" {
   bucket = aws_s3_bucket.log_bucket.id
 
   rule {
@@ -54,39 +45,25 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "log_encryption" {
   }
 }
 
-# =========================================================
-# MAIN S3 BUCKET
-# =========================================================
-resource "aws_s3_bucket" "devsecops_bucket" {
-  bucket = "devsecops-demo-bucket-${random_id.suffix.hex}"
-
-  tags = {
-    Project     = "devsecops-pipeline"
-    Environment = "dev"
-    Owner       = "wcdennis38"
-  }
+# -----------------------------
+# MAIN BUCKET
+# -----------------------------
+resource "aws_s3_bucket" "main" {
+  bucket = "prod-bucket-${random_id.suffix.hex}"
 }
 
-# -----------------------------
-# OWNERSHIP CONTROLS (FIRST)
-# -----------------------------
-resource "aws_s3_bucket_ownership_controls" "this" {
-  bucket = aws_s3_bucket.devsecops_bucket.id
+resource "aws_s3_bucket_ownership_controls" "main" {
+  bucket = aws_s3_bucket.main.id
 
   rule {
     object_ownership = "BucketOwnerPreferred"
   }
 }
 
-# -----------------------------
-# PUBLIC ACCESS BLOCK (DEPENDENT)
-# -----------------------------
-resource "aws_s3_bucket_public_access_block" "this" {
-  bucket = aws_s3_bucket.devsecops_bucket.id
+resource "aws_s3_bucket_public_access_block" "main" {
+  bucket = aws_s3_bucket.main.id
 
-  depends_on = [
-    aws_s3_bucket_ownership_controls.this
-  ]
+  depends_on = [aws_s3_bucket_ownership_controls.main]
 
   block_public_acls       = true
   block_public_policy     = true
@@ -94,30 +71,20 @@ resource "aws_s3_bucket_public_access_block" "this" {
   restrict_public_buckets = true
 }
 
-# -----------------------------
-# VERSIONING
-# -----------------------------
-resource "aws_s3_bucket_versioning" "this" {
-  bucket = aws_s3_bucket.devsecops_bucket.id
+resource "aws_s3_bucket_versioning" "main" {
+  bucket = aws_s3_bucket.main.id
 
-  depends_on = [
-    aws_s3_bucket_public_access_block.this
-  ]
+  depends_on = [aws_s3_bucket_public_access_block.main]
 
   versioning_configuration {
     status = "Enabled"
   }
 }
 
-# -----------------------------
-# ENCRYPTION (AES256 - NO KMS ISSUES)
-# -----------------------------
-resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
-  bucket = aws_s3_bucket.devsecops_bucket.id
+resource "aws_s3_bucket_server_side_encryption_configuration" "main" {
+  bucket = aws_s3_bucket.main.id
 
-  depends_on = [
-    aws_s3_bucket_versioning.this
-  ]
+  depends_on = [aws_s3_bucket_versioning.main]
 
   rule {
     apply_server_side_encryption_by_default {
@@ -127,28 +94,22 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
 }
 
 # -----------------------------
-# ACCESS LOGGING (FIXES SECURITY WARNING)
+# LOGGING (FIXES "DISABLED LOGGING" WARNING)
 # -----------------------------
-resource "aws_s3_bucket_logging" "this" {
-  bucket = aws_s3_bucket.devsecops_bucket.id
+resource "aws_s3_bucket_logging" "main" {
+  bucket = aws_s3_bucket.main.id
 
   target_bucket = aws_s3_bucket.log_bucket.id
   target_prefix = "access-logs/"
-
-  depends_on = [
-    aws_s3_bucket_server_side_encryption_configuration.this
-  ]
 }
 
 # -----------------------------
-# HTTPS-ONLY POLICY
+# HTTPS ONLY POLICY (CIS REQUIRED)
 # -----------------------------
-resource "aws_s3_bucket_policy" "secure" {
-  bucket = aws_s3_bucket.devsecops_bucket.id
+resource "aws_s3_bucket_policy" "main" {
+  bucket = aws_s3_bucket.main.id
 
-  depends_on = [
-    aws_s3_bucket_public_access_block.this
-  ]
+  depends_on = [aws_s3_bucket_public_access_block.main]
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -159,8 +120,8 @@ resource "aws_s3_bucket_policy" "secure" {
         Principal = "*"
         Action = "s3:*"
         Resource = [
-          aws_s3_bucket.devsecops_bucket.arn,
-          "${aws_s3_bucket.devsecops_bucket.arn}/*"
+          aws_s3_bucket.main.arn,
+          "${aws_s3_bucket.main.arn}/*"
         ]
         Condition = {
           Bool = {
@@ -172,13 +133,6 @@ resource "aws_s3_bucket_policy" "secure" {
   })
 }
 
-# -----------------------------
-# OUTPUT
-# -----------------------------
 output "bucket_name" {
-  value = aws_s3_bucket.devsecops_bucket.bucket
-}
-
-output "log_bucket_name" {
-  value = aws_s3_bucket.log_bucket.bucket
+  value = aws_s3_bucket.main.bucket
 }
