@@ -24,6 +24,25 @@ resource "random_id" "suffix" {
 }
 
 # -----------------------------
+# Customer-managed KMS key
+# -----------------------------
+resource "aws_kms_key" "s3" {
+  description             = "KMS key for S3 bucket encryption"
+  deletion_window_in_days = 7
+  enable_key_rotation     = true
+
+  tags = {
+    Project     = "devsecops-pipeline"
+    Environment = "dev"
+  }
+}
+
+resource "aws_kms_alias" "s3" {
+  name          = "alias/devsecops-s3"
+  target_key_id = aws_kms_key.s3.key_id
+}
+
+# -----------------------------
 # S3 Bucket
 # -----------------------------
 resource "aws_s3_bucket" "devsecops_bucket" {
@@ -37,7 +56,7 @@ resource "aws_s3_bucket" "devsecops_bucket" {
 }
 
 # -----------------------------
-# Public Access Block (SECURITY)
+# Public Access Block
 # -----------------------------
 resource "aws_s3_bucket_public_access_block" "this" {
   bucket = aws_s3_bucket.devsecops_bucket.id
@@ -49,7 +68,7 @@ resource "aws_s3_bucket_public_access_block" "this" {
 }
 
 # -----------------------------
-# VERSIONING (NEW AWS PROVIDER STYLE)
+# Versioning
 # -----------------------------
 resource "aws_s3_bucket_versioning" "this" {
   bucket = aws_s3_bucket.devsecops_bucket.id
@@ -60,20 +79,23 @@ resource "aws_s3_bucket_versioning" "this" {
 }
 
 # -----------------------------
-# ENCRYPTION (AWS PROVIDER v5)
+# KMS Encryption (Fixes AWS-0132)
 # -----------------------------
 resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
   bucket = aws_s3_bucket.devsecops_bucket.id
 
   rule {
     apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = aws_kms_key.s3.arn
     }
+
+    bucket_key_enabled = true
   }
 }
 
 # -----------------------------
-# OWNERSHIP CONTROLS (FIXED FORMAT)
+# Ownership Controls
 # -----------------------------
 resource "aws_s3_bucket_ownership_controls" "this" {
   bucket = aws_s3_bucket.devsecops_bucket.id
@@ -84,7 +106,7 @@ resource "aws_s3_bucket_ownership_controls" "this" {
 }
 
 # -----------------------------
-# BLOCK INSECURE HTTP ACCESS
+# HTTPS Only Policy
 # -----------------------------
 resource "aws_s3_bucket_policy" "secure" {
   bucket = aws_s3_bucket.devsecops_bucket.id
@@ -93,14 +115,19 @@ resource "aws_s3_bucket_policy" "secure" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid       = "DenyInsecureTransport"
-        Effect    = "Deny"
+        Sid = "DenyInsecureTransport"
+
+        Effect = "Deny"
+
         Principal = "*"
-        Action    = "s3:*"
-        Resource  = [
+
+        Action = "s3:*"
+
+        Resource = [
           aws_s3_bucket.devsecops_bucket.arn,
           "${aws_s3_bucket.devsecops_bucket.arn}/*"
         ]
+
         Condition = {
           Bool = {
             "aws:SecureTransport" = "false"
@@ -112,7 +139,7 @@ resource "aws_s3_bucket_policy" "secure" {
 }
 
 # -----------------------------
-# LOGGING (self-logging - allowed but not ideal)
+# Access Logging
 # -----------------------------
 resource "aws_s3_bucket_logging" "this" {
   bucket = aws_s3_bucket.devsecops_bucket.id
