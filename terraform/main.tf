@@ -20,6 +20,20 @@ resource "random_id" "suffix" {
 }
 
 # =====================================================
+# KMS KEY FOR ENCRYPTION
+# =====================================================
+resource "aws_kms_key" "s3_key" {
+  description             = "KMS key for S3 encryption"
+  deletion_window_in_days = 10
+  enable_key_rotation     = true
+}
+
+resource "aws_kms_alias" "s3_key" {
+  name          = "alias/s3-encryption-key"
+  target_key_id = aws_kms_key.s3_key.key_id
+}
+
+# =====================================================
 # LOG BUCKET
 # =====================================================
 resource "aws_s3_bucket" "log_bucket" {
@@ -62,9 +76,19 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "log" {
 
   rule {
     apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = aws_kms_key.s3_key.arn
     }
   }
+}
+
+resource "aws_s3_bucket_logging" "log" {
+  bucket = aws_s3_bucket.log_bucket.id
+
+  depends_on = [aws_s3_bucket_public_access_block.log]
+
+  target_bucket = aws_s3_bucket.log_bucket.id
+  target_prefix = "access-logs/"
 }
 
 # =====================================================
@@ -110,7 +134,8 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "main" {
 
   rule {
     apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = aws_kms_key.s3_key.arn
     }
   }
 }
