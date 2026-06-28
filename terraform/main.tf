@@ -17,7 +17,7 @@ provider "aws" {
 }
 
 # -----------------------------
-# Random suffix (safe dependency)
+# Random suffix
 # -----------------------------
 resource "random_id" "suffix" {
   byte_length = 4
@@ -37,12 +37,57 @@ resource "aws_s3_bucket" "devsecops_bucket" {
 }
 
 # -----------------------------
-# BLOCK INSECURE HTTP ACCESS (tfsec fix)
+# Public Access Block (SECURITY)
+# -----------------------------
+resource "aws_s3_bucket_public_access_block" "this" {
+  bucket = aws_s3_bucket.devsecops_bucket.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# -----------------------------
+# VERSIONING (NEW AWS PROVIDER STYLE)
+# -----------------------------
+resource "aws_s3_bucket_versioning" "this" {
+  bucket = aws_s3_bucket.devsecops_bucket.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+# -----------------------------
+# ENCRYPTION (AWS PROVIDER v5)
+# -----------------------------
+resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
+  bucket = aws_s3_bucket.devsecops_bucket.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+# -----------------------------
+# OWNERSHIP CONTROLS (FIXED FORMAT)
+# -----------------------------
+resource "aws_s3_bucket_ownership_controls" "this" {
+  bucket = aws_s3_bucket.devsecops_bucket.id
+
+  rule {
+    object_ownership = "BucketOwnerPreferred"
+  }
+}
+
+# -----------------------------
+# BLOCK INSECURE HTTP ACCESS
 # -----------------------------
 resource "aws_s3_bucket_policy" "secure" {
   bucket = aws_s3_bucket.devsecops_bucket.id
-
-  depends_on = [aws_s3_bucket.devsecops_bucket]
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -67,8 +112,7 @@ resource "aws_s3_bucket_policy" "secure" {
 }
 
 # -----------------------------
-# ENABLE LOGGING (fixes scanner warning)
-# NOTE: self-logging is allowed for dev/demo setups
+# LOGGING (self-logging - allowed but not ideal)
 # -----------------------------
 resource "aws_s3_bucket_logging" "this" {
   bucket = aws_s3_bucket.devsecops_bucket.id
@@ -76,35 +120,3 @@ resource "aws_s3_bucket_logging" "this" {
   target_bucket = aws_s3_bucket.devsecops_bucket.id
   target_prefix = "access-logs/"
 }
-
-# -----------------------------
-# PUBLIC ACCESS BLOCK (required for security compliance)
-# -----------------------------
-resource "aws_s3_bucket_public_access_block" "this" {
-  bucket = aws_s3_bucket.devsecops_bucket.id
-
-  block_public_acls       = true
-  block_public_policy     = true
-  ignore_public_acls      = true
-  restrict_public_buckets = true
-}
-
-versioning {
-  enabled = true
-}
-
-server_side_encryption_configuration {
-  rule {
-    apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
-    }
-  }
-}
-
-ownership_controls {
-  rule {
-    object_ownership = "BucketOwnerPreferred"
-  }
-}
-
-
