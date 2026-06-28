@@ -23,9 +23,10 @@ resource "random_id" "suffix" {
 # KMS KEY FOR ENCRYPTION
 # =====================================================
 resource "aws_kms_key" "s3_key" {
-  description             = "KMS key for S3 encryption"
-  deletion_window_in_days = 10
-  enable_key_rotation     = true
+  description               = "KMS key for S3 encryption"
+  deletion_window_in_days   = 10
+  enable_key_rotation       = true
+  bypass_policy_lockout_safety_check = false
 }
 
 resource "aws_kms_alias" "s3_key" {
