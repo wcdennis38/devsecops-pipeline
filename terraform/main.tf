@@ -26,6 +26,10 @@ resource "aws_kms_key" "s3_key" {
   description             = "KMS key for S3 encryption"
   deletion_window_in_days = 10
   enable_key_rotation     = true
+
+  tags = {
+    Name = "s3-encryption-key"
+  }
 }
 
 resource "aws_kms_alias" "s3_key" {
@@ -38,6 +42,10 @@ resource "aws_kms_alias" "s3_key" {
 # =====================================================
 resource "aws_s3_bucket" "log_bucket" {
   bucket = "prod-logs-${random_id.suffix.hex}"
+
+  tags = {
+    Name = "prod-logs-bucket"
+  }
 }
 
 resource "aws_s3_bucket_ownership_controls" "log" {
@@ -79,16 +87,52 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "log" {
       sse_algorithm     = "aws:kms"
       kms_master_key_id = aws_kms_key.s3_key.arn
     }
+    bucket_key_enabled = true
   }
 }
 
 resource "aws_s3_bucket_logging" "log" {
   bucket = aws_s3_bucket.log_bucket.id
 
-  depends_on = [aws_s3_bucket_public_access_block.log]
+  depends_on = [
+    aws_s3_bucket_public_access_block.log,
+    aws_s3_bucket_server_side_encryption_configuration.log
+  ]
 
   target_bucket = aws_s3_bucket.log_bucket.id
   target_prefix = "access-logs/"
+}
+
+resource "aws_s3_bucket_policy" "log" {
+  bucket = aws_s3_bucket.log_bucket.id
+
+  depends_on = [
+    aws_s3_bucket_ownership_controls.log,
+    aws_s3_bucket_public_access_block.log,
+    aws_s3_bucket_server_side_encryption_configuration.log,
+    aws_s3_bucket_versioning.log
+  ]
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "DenyInsecureTransport"
+        Effect = "Deny"
+        Principal = "*"
+        Action = "s3:*"
+        Resource = [
+          aws_s3_bucket.log_bucket.arn,
+          "${aws_s3_bucket.log_bucket.arn}/*"
+        ]
+        Condition = {
+          Bool = {
+            "aws:SecureTransport" = "false"
+          }
+        }
+      }
+    ]
+  })
 }
 
 # =====================================================
@@ -96,6 +140,10 @@ resource "aws_s3_bucket_logging" "log" {
 # =====================================================
 resource "aws_s3_bucket" "main" {
   bucket = "prod-bucket-${random_id.suffix.hex}"
+
+  tags = {
+    Name = "prod-bucket"
+  }
 }
 
 resource "aws_s3_bucket_ownership_controls" "main" {
@@ -137,11 +185,30 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "main" {
       sse_algorithm     = "aws:kms"
       kms_master_key_id = aws_kms_key.s3_key.arn
     }
+    bucket_key_enabled = true
   }
 }
 
+resource "aws_s3_bucket_logging" "main" {
+  bucket = aws_s3_bucket.main.id
+
+  depends_on = [
+    aws_s3_bucket_ownership_controls.main,
+    aws_s3_bucket_public_access_block.main,
+    aws_s3_bucket_server_side_encryption_configuration.main,
+    aws_s3_bucket_versioning.main,
+    aws_s3_bucket_ownership_controls.log,
+    aws_s3_bucket_public_access_block.log,
+    aws_s3_bucket_server_side_encryption_configuration.log,
+    aws_s3_bucket_versioning.log
+  ]
+
+  target_bucket = aws_s3_bucket.log_bucket.id
+  target_prefix = "access-logs/"
+}
+
 # =====================================================
-# HTTPS ONLY POLICY (FIXED + CIS SAFE)
+# HTTPS ONLY POLICY FOR MAIN BUCKET
 # =====================================================
 resource "aws_s3_bucket_policy" "main" {
   bucket = aws_s3_bucket.main.id
@@ -150,7 +217,8 @@ resource "aws_s3_bucket_policy" "main" {
     aws_s3_bucket_ownership_controls.main,
     aws_s3_bucket_public_access_block.main,
     aws_s3_bucket_server_side_encryption_configuration.main,
-    aws_s3_bucket_versioning.main
+    aws_s3_bucket_versioning.main,
+    aws_s3_bucket_logging.main
   ]
 
   policy = jsonencode({
@@ -176,30 +244,16 @@ resource "aws_s3_bucket_policy" "main" {
 }
 
 # =====================================================
-# LOGGING
-# =====================================================
-resource "aws_s3_bucket_logging" "main" {
-  bucket = aws_s3_bucket.main.id
-
-  depends_on = [
-    aws_s3_bucket_ownership_controls.main,
-    aws_s3_bucket_public_access_block.main,
-    aws_s3_bucket_server_side_encryption_configuration.main,
-    aws_s3_bucket_versioning.main,
-
-    aws_s3_bucket_ownership_controls.log,
-    aws_s3_bucket_public_access_block.log,
-    aws_s3_bucket_server_side_encryption_configuration.log,
-    aws_s3_bucket_versioning.log
-  ]
-
-  target_bucket = aws_s3_bucket.log_bucket.id
-  target_prefix = "access-logs/"
-}
-
-# =====================================================
 # OUTPUT
 # =====================================================
 output "bucket_name" {
   value = aws_s3_bucket.main.bucket
+}
+
+output "log_bucket_name" {
+  value = aws_s3_bucket.log_bucket.bucket
+}
+
+output "kms_key_id" {
+  value = aws_kms_key.s3_key.id
 }
