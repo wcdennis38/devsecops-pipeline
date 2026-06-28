@@ -2,28 +2,27 @@ name: SOC2 DevSecOps Pipeline
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
+
+permissions:
+  contents: read
+  id-token: write
 
 jobs:
   security_scan:
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-      id-token: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Run Trivy config scan
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@0.36.0
         with:
           scan-type: config
           scan-ref: .
-          format: table
+          format: sarif
           exit-code: 1
           severity: HIGH,CRITICAL
 
@@ -31,10 +30,6 @@ jobs:
     needs: security_scan
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-
-    permissions:
-      contents: read
-      id-token: write
 
     steps:
       - name: Checkout code
@@ -50,9 +45,6 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.6.6
-
-      - name: Verify AWS identity
-        run: aws sts get-caller-identity
 
       - name: Terraform Init
         working-directory: terraform
