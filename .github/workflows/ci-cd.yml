@@ -1,33 +1,57 @@
-deploy:
-  name: deploy
-  needs: security_scan
-  runs-on: ubuntu-latest
-  if: github.ref == 'refs/heads/main'
+name: SOC2 DevSecOps Pipeline
 
-  steps:
-    - name: Checkout code
-  uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+on:
+  push:
+    branches: ["main"]
+  pull_request:
 
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
-      with:
-        terraform_version: 1.6.6
+permissions:
+  contents: read
+  id-token: write
 
-    - name: Configure AWS credentials (OIDC)
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        role-to-assume: arn:aws:iam::150460248370:role/dev-sec-ops-role
-        aws-region: us-east-1
+jobs:
+  security_scan:
+    runs-on: ubuntu-latest
 
-    - name: Verify AWS identity
-      run: aws sts get-caller-identity
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
 
-    - name: Terraform Init
-      run: |
-        cd terraform
-        terraform init
+      - name: Run Trivy config scan
+        uses: aquasecurity/trivy-action@<TRIVY_COMMIT_SHA>
+        with:
+          scan-type: config
+          format: table
+          exit-code: 1
+          severity: HIGH,CRITICAL
 
-    - name: Terraform Apply
-      run: |
-        cd terraform
-        terraform apply -auto-approve
+  deploy:
+    needs: security_scan
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@<AWS_CRED_COMMIT_SHA>
+        with:
+          role-to-assume: arn:aws:iam::150460248370:role/dev-sec-ops-role
+          aws-region: us-east-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@<TERRAFORM_COMMIT_SHA>
+
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
+
+      - name: Terraform Init
+        run: |
+          cd terraform
+          terraform init
+
+      - name: Terraform Apply
+        run: |
+          cd terraform
+          terraform apply -auto-approve
