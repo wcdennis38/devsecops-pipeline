@@ -20,6 +20,20 @@ resource "random_id" "suffix" {
 }
 
 # =====================================================
+# KMS KEY FOR ENCRYPTION
+# =====================================================
+resource "aws_kms_key" "s3_key" {
+  description             = "KMS key for S3 encryption"
+  deletion_window_in_days = 10
+  enable_key_rotation     = true
+}
+
+resource "aws_kms_alias" "s3_key" {
+  name          = "alias/s3-encryption-key"
+  target_key_id = aws_kms_key.s3_key.key_id
+}
+
+# =====================================================
 # LOG BUCKET
 # =====================================================
 resource "aws_s3_bucket" "log_bucket" {
@@ -66,8 +80,10 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "log" {
 
   rule {
     apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = aws_kms_key.s3_key.arn
     }
+    bucket_key_enabled = true
   }
 }
 
@@ -97,10 +113,10 @@ resource "aws_s3_bucket_policy" "log" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "DenyInsecureTransport"
-        Effect = "Deny"
+        Sid       = "DenyInsecureTransport"
+        Effect    = "Deny"
         Principal = "*"
-        Action = "s3:*"
+        Action    = "s3:*"
         Resource = [
           aws_s3_bucket.log_bucket.arn,
           "${aws_s3_bucket.log_bucket.arn}/*"
@@ -162,8 +178,10 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "main" {
 
   rule {
     apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = aws_kms_key.s3_key.arn
     }
+    bucket_key_enabled = true
   }
 }
 
@@ -185,9 +203,6 @@ resource "aws_s3_bucket_logging" "main" {
   target_prefix = "access-logs/"
 }
 
-# =====================================================
-# HTTPS ONLY POLICY FOR MAIN BUCKET
-# =====================================================
 resource "aws_s3_bucket_policy" "main" {
   bucket = aws_s3_bucket.main.id
 
@@ -203,10 +218,10 @@ resource "aws_s3_bucket_policy" "main" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "DenyInsecureTransport"
-        Effect = "Deny"
+        Sid       = "DenyInsecureTransport"
+        Effect    = "Deny"
         Principal = "*"
-        Action = "s3:*"
+        Action    = "s3:*"
         Resource = [
           aws_s3_bucket.main.arn,
           "${aws_s3_bucket.main.arn}/*"
@@ -222,7 +237,7 @@ resource "aws_s3_bucket_policy" "main" {
 }
 
 # =====================================================
-# OUTPUT
+# OUTPUTS
 # =====================================================
 output "bucket_name" {
   value = aws_s3_bucket.main.bucket
@@ -230,4 +245,8 @@ output "bucket_name" {
 
 output "log_bucket_name" {
   value = aws_s3_bucket.log_bucket.bucket
+}
+
+output "kms_key_id" {
+  value = aws_kms_key.s3_key.id
 }
