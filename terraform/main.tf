@@ -29,6 +29,23 @@ resource "random_id" "suffix" {
 resource "aws_s3_bucket" "devsecops_bucket" {
   bucket = "devsecops-demo-bucket-${random_id.suffix.hex}"
 
+resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
+  bucket = aws_s3_bucket.devsecops_bucket.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+
+
   tags = {
     Project     = "devsecops-pipeline"
     Environment = "dev"
