@@ -37,7 +37,7 @@ resource "aws_s3_bucket" "devsecops_bucket" {
 }
 
 # -----------------------------
-# OWNERSHIP CONTROLS (MUST COME EARLY)
+# OWNERSHIP CONTROLS (FORCE FIRST)
 # -----------------------------
 resource "aws_s3_bucket_ownership_controls" "this" {
   bucket = aws_s3_bucket.devsecops_bucket.id
@@ -48,10 +48,14 @@ resource "aws_s3_bucket_ownership_controls" "this" {
 }
 
 # -----------------------------
-# PUBLIC ACCESS BLOCK (SECURITY)
+# PUBLIC ACCESS BLOCK (DEPENDENT)
 # -----------------------------
 resource "aws_s3_bucket_public_access_block" "this" {
   bucket = aws_s3_bucket.devsecops_bucket.id
+
+  depends_on = [
+    aws_s3_bucket_ownership_controls.this
+  ]
 
   block_public_acls       = true
   block_public_policy     = true
@@ -65,16 +69,24 @@ resource "aws_s3_bucket_public_access_block" "this" {
 resource "aws_s3_bucket_versioning" "this" {
   bucket = aws_s3_bucket.devsecops_bucket.id
 
+  depends_on = [
+    aws_s3_bucket_public_access_block.this
+  ]
+
   versioning_configuration {
     status = "Enabled"
   }
 }
 
 # -----------------------------
-# SERVER-SIDE ENCRYPTION (AES256)
+# ENCRYPTION (AES256)
 # -----------------------------
 resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
   bucket = aws_s3_bucket.devsecops_bucket.id
+
+  depends_on = [
+    aws_s3_bucket_versioning.this
+  ]
 
   rule {
     apply_server_side_encryption_by_default {
@@ -90,7 +102,7 @@ resource "aws_s3_bucket_policy" "secure" {
   bucket = aws_s3_bucket.devsecops_bucket.id
 
   depends_on = [
-    aws_s3_bucket_public_access_block.this
+    aws_s3_bucket_server_side_encryption_configuration.this
   ]
 
   policy = jsonencode({
@@ -114,15 +126,6 @@ resource "aws_s3_bucket_policy" "secure" {
     ]
   })
 }
-
-# -----------------------------
-# ACCESS LOGGING (FIXED)
-# -----------------------------
-# IMPORTANT: S3 cannot log to itself.
-# So we DISABLE self-logging (this was breaking validation)
-
-# OPTIONAL: If you really need logging, create a second bucket:
-# resource "aws_s3_bucket" "log_bucket" { ... }
 
 # -----------------------------
 # OUTPUT
