@@ -2,28 +2,23 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies (minimal + secure)
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first (better layer caching)
-COPY requirements.txt .
-
-# Install Python dependencies
+# SAFE: only dependency file
+COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY . .
+# SAFE: only application code (no repo-wide copy)
+COPY app/ /app/app/
+COPY main.py /app/main.py
 
-# Create non-root user for security
-RUN useradd -m appuser
-RUN chown -R appuser:appuser /app
-
+RUN useradd -m appuser && chown -R appuser:appuser /app
 USER appuser
 
-# Health check (must use full path safety in slim images)
+EXPOSE 8080
+
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
   CMD curl -f http://localhost:8080/health || exit 1
 
-# Start app
 CMD ["python", "app/main.py"]
