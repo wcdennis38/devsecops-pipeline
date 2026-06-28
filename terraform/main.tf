@@ -23,13 +23,42 @@ resource "random_id" "suffix" {
   byte_length = 4
 }
 
-# -----------------------------
-# S3 BUCKET (BASE)
-# -----------------------------
+# =========================================================
+# LOG BUCKET (FIXES LOGGING SECURITY WARNING)
+# =========================================================
+resource "aws_s3_bucket" "log_bucket" {
+  bucket = "devsecops-logs-${random_id.suffix.hex}"
+
+  tags = {
+    Purpose = "access-logs"
+    Owner   = "wcdennis38"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "log_block" {
+  bucket = aws_s3_bucket.log_bucket.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "log_encryption" {
+  bucket = aws_s3_bucket.log_bucket.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+# =========================================================
+# MAIN S3 BUCKET
+# =========================================================
 resource "aws_s3_bucket" "devsecops_bucket" {
   bucket = "devsecops-demo-bucket-${random_id.suffix.hex}"
-
-  acl = "private"  # FIX #4: explicit ACL enforcement (scanner-safe)
 
   tags = {
     Project     = "devsecops-pipeline"
@@ -39,7 +68,7 @@ resource "aws_s3_bucket" "devsecops_bucket" {
 }
 
 # -----------------------------
-# 1. OWNERSHIP CONTROLS (MUST BE FIRST)
+# OWNERSHIP CONTROLS (FIRST)
 # -----------------------------
 resource "aws_s3_bucket_ownership_controls" "this" {
   bucket = aws_s3_bucket.devsecops_bucket.id
@@ -50,7 +79,7 @@ resource "aws_s3_bucket_ownership_controls" "this" {
 }
 
 # -----------------------------
-# 2. PUBLIC ACCESS BLOCK (DEPENDS ON OWNERSHIP)
+# PUBLIC ACCESS BLOCK (DEPENDENT)
 # -----------------------------
 resource "aws_s3_bucket_public_access_block" "this" {
   bucket = aws_s3_bucket.devsecops_bucket.id
@@ -66,7 +95,7 @@ resource "aws_s3_bucket_public_access_block" "this" {
 }
 
 # -----------------------------
-# 3. VERSIONING (DEPENDS ON ACCESS BLOCK)
+# VERSIONING
 # -----------------------------
 resource "aws_s3_bucket_versioning" "this" {
   bucket = aws_s3_bucket.devsecops_bucket.id
@@ -81,7 +110,7 @@ resource "aws_s3_bucket_versioning" "this" {
 }
 
 # -----------------------------
-# 4. ENCRYPTION (DEPENDS ON VERSIONING)
+# ENCRYPTION (AES256 - NO KMS ISSUES)
 # -----------------------------
 resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
   bucket = aws_s3_bucket.devsecops_bucket.id
@@ -98,13 +127,27 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
 }
 
 # -----------------------------
-# 5. HTTPS-ONLY BUCKET POLICY (LAST STEP)
+# ACCESS LOGGING (FIXES SECURITY WARNING)
+# -----------------------------
+resource "aws_s3_bucket_logging" "this" {
+  bucket = aws_s3_bucket.devsecops_bucket.id
+
+  target_bucket = aws_s3_bucket.log_bucket.id
+  target_prefix = "access-logs/"
+
+  depends_on = [
+    aws_s3_bucket_server_side_encryption_configuration.this
+  ]
+}
+
+# -----------------------------
+# HTTPS-ONLY POLICY
 # -----------------------------
 resource "aws_s3_bucket_policy" "secure" {
   bucket = aws_s3_bucket.devsecops_bucket.id
 
   depends_on = [
-    aws_s3_bucket_server_side_encryption_configuration.this
+    aws_s3_bucket_public_access_block.this
   ]
 
   policy = jsonencode({
@@ -134,4 +177,8 @@ resource "aws_s3_bucket_policy" "secure" {
 # -----------------------------
 output "bucket_name" {
   value = aws_s3_bucket.devsecops_bucket.bucket
+}
+
+output "log_bucket_name" {
+  value = aws_s3_bucket.log_bucket.bucket
 }
