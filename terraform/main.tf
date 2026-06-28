@@ -116,15 +116,16 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "main" {
 }
 
 # =====================================================
-# HTTPS ONLY POLICY (FIXED SCANNER DETECTION)
+# HTTPS ONLY POLICY (FIXED + CIS SAFE)
 # =====================================================
 resource "aws_s3_bucket_policy" "main" {
   bucket = aws_s3_bucket.main.id
 
   depends_on = [
-    aws_s3_bucket_public_access_block.main,
     aws_s3_bucket_ownership_controls.main,
-    aws_s3_bucket_server_side_encryption_configuration.main
+    aws_s3_bucket_public_access_block.main,
+    aws_s3_bucket_server_side_encryption_configuration.main,
+    aws_s3_bucket_versioning.main
   ]
 
   policy = jsonencode({
@@ -150,7 +151,7 @@ resource "aws_s3_bucket_policy" "main" {
 }
 
 # =====================================================
-# LOGGING (CIS SAFE + DETECTABLE)
+# LOGGING
 # =====================================================
 resource "aws_s3_bucket_logging" "main" {
   bucket = aws_s3_bucket.main.id
