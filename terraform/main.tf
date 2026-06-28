@@ -20,7 +20,7 @@ resource "random_id" "suffix" {
 }
 
 # =====================================================
-# LOG BUCKET (FULLY HARDENED - FIXES CIS FINDINGS)
+# LOG BUCKET
 # =====================================================
 resource "aws_s3_bucket" "log_bucket" {
   bucket = "prod-logs-${random_id.suffix.hex}"
@@ -116,27 +116,16 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "main" {
 }
 
 # =====================================================
-# LOGGING (NOW CIS SAFE)
-# =====================================================
-resource "aws_s3_bucket_logging" "main" {
-  bucket = aws_s3_bucket.main.id
-
-  depends_on = [
-    aws_s3_bucket_server_side_encryption_configuration.main,
-    aws_s3_bucket_server_side_encryption_configuration.log
-  ]
-
-  target_bucket = aws_s3_bucket.log_bucket.id
-  target_prefix = "access-logs/"
-}
-
-# =====================================================
-# HTTPS ONLY POLICY (CIS REQUIRED)
+# HTTPS ONLY POLICY (FIXED SCANNER DETECTION)
 # =====================================================
 resource "aws_s3_bucket_policy" "main" {
   bucket = aws_s3_bucket.main.id
 
-  depends_on = [aws_s3_bucket_public_access_block.main]
+  depends_on = [
+    aws_s3_bucket_public_access_block.main,
+    aws_s3_bucket_ownership_controls.main,
+    aws_s3_bucket_server_side_encryption_configuration.main
+  ]
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -158,6 +147,23 @@ resource "aws_s3_bucket_policy" "main" {
       }
     ]
   })
+}
+
+# =====================================================
+# LOGGING (CIS SAFE + DETECTABLE)
+# =====================================================
+resource "aws_s3_bucket_logging" "main" {
+  bucket = aws_s3_bucket.main.id
+
+  depends_on = [
+    aws_s3_bucket_server_side_encryption_configuration.main,
+    aws_s3_bucket_server_side_encryption_configuration.log,
+    aws_s3_bucket_public_access_block.main,
+    aws_s3_bucket_public_access_block.log
+  ]
+
+  target_bucket = aws_s3_bucket.log_bucket.id
+  target_prefix = "access-logs/"
 }
 
 # =====================================================
