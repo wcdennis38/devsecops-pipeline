@@ -34,7 +34,11 @@ jobs:
     if: github.ref == 'refs/heads/main'
 
     steps:
+<<<<<<< Updated upstream
       - name: Checkout code
+=======
+     - name: Checkout code
+>>>>>>> Stashed changes
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
 
       - name: Configure AWS credentials
