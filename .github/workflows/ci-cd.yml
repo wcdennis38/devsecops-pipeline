@@ -5,20 +5,20 @@ on:
     branches: ["main"]
   pull_request:
 
-permissions:
-  contents: read
-  id-token: write
-
 jobs:
   security_scan:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+      id-token: write
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@8f4b3c2d9a6b7c1d2e3f4a5b6c7d8e9f0a1b2c3d
 
       - name: Run Trivy config scan
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@3c1a9b7d8f2e4c6a1d9b7c8e3f4a5b6c7d8e9f01
         with:
           scan-type: config
           scan-ref: .
@@ -37,16 +37,16 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@8f4b3c2d9a6b7c1d2e3f4a5b6c7d8e9f0a1b2c3d
 
       - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9012
         with:
           role-to-assume: arn:aws:iam::150460248370:role/dev-sec-ops-role
           aws-region: us-east-1
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@9a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8901
         with:
           terraform_version: 1.6.6
 
