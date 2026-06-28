@@ -171,7 +171,7 @@ resource "aws_s3_bucket_logging" "main" {
   target_bucket = aws_s3_bucket.log_bucket.id
   target_prefix = "access-logs/"
 }
-}
+
 # =====================================================
 # OUTPUT
 # =====================================================
