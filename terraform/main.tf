@@ -157,22 +157,20 @@ resource "aws_s3_bucket_logging" "main" {
   bucket = aws_s3_bucket.main.id
 
   depends_on = [
-    # MAIN bucket controls
     aws_s3_bucket_ownership_controls.main,
     aws_s3_bucket_public_access_block.main,
     aws_s3_bucket_server_side_encryption_configuration.main,
     aws_s3_bucket_versioning.main,
 
-    # LOG BUCKET (IMPORTANT ADDITION)
-    aws_s3_bucket.log,
     aws_s3_bucket_ownership_controls.log,
     aws_s3_bucket_public_access_block.log,
-    aws_s3_bucket_versioning.log,
-    aws_s3_bucket_server_side_encryption_configuration.log
+    aws_s3_bucket_server_side_encryption_configuration.log,
+    aws_s3_bucket_versioning.log
   ]
 
   target_bucket = aws_s3_bucket.log_bucket.id
   target_prefix = "access-logs/"
+}
 }
 # =====================================================
 # OUTPUT
