@@ -157,16 +157,20 @@ resource "aws_s3_bucket_logging" "main" {
   bucket = aws_s3_bucket.main.id
 
   depends_on = [
+    # main bucket security chain
     aws_s3_bucket_server_side_encryption_configuration.main,
-    aws_s3_bucket_server_side_encryption_configuration.log,
     aws_s3_bucket_public_access_block.main,
-    aws_s3_bucket_public_access_block.log
+
+    # log bucket MUST be fully hardened before use (CIS requirement)
+    aws_s3_bucket_ownership_controls.log,
+    aws_s3_bucket_public_access_block.log,
+    aws_s3_bucket_versioning.log,
+    aws_s3_bucket_server_side_encryption_configuration.log
   ]
 
   target_bucket = aws_s3_bucket.log_bucket.id
   target_prefix = "access-logs/"
 }
-
 # =====================================================
 # OUTPUT
 # =====================================================
