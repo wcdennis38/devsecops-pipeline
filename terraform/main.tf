@@ -64,7 +64,7 @@ resource "aws_s3_bucket_versioning" "this" {
 # -----------------------------
 resource "aws_kms_key" "s3" {
   description         = "S3 encryption key"
-  enable_key_rotation = true
+  enable_key_rotation = false
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
