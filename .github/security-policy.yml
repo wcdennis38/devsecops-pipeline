@@ -1,0 +1,7 @@
+# Security policy for GitHub Actions (SOC2 DevSecOps)
+
+allowed_actions:
+  - actions/checkout
+  - aws-actions/configure-aws-credentials
+  - hashicorp/setup-terraform
+  - aquasecurity/trivy-action
