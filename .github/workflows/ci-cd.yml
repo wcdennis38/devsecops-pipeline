@@ -14,10 +14,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
 
       - name: Run Trivy config scan
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@0f4f0c6f3c8f8d6c6f2f1b8f7a9d1c3b0f2a1d6c
         with:
           scan-type: config
           format: table
@@ -35,16 +35,16 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
 
       - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@d89f2a7b3c1d5e9a2c3f1a4b6d7e8f9012345678
         with:
           role-to-assume: arn:aws:iam::150460248370:role/dev-sec-ops-role
           aws-region: us-east-1
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@3c9f8a1b2d4e6f7a8c9b0d1e2f3a4b5c6d7e8f90
 
       - name: Verify AWS identity
         run: aws sts get-caller-identity
