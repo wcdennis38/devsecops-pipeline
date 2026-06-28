@@ -6,40 +6,45 @@ phases:
       python: 3.11
 
     commands:
+      - echo "=== SYSTEM DEPENDENCIES ==="
+      - apt-get update && apt-get install -y curl unzip
+
       - echo "=== INSTALLING TERRAFORM ==="
       - TERRAFORM_VERSION="1.6.6"
       - curl -fsSL -o terraform.zip https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip
       - unzip -o terraform.zip
-      - chmod +x terraform
       - mv terraform /usr/local/bin/
       - terraform version
 
-      - echo "=== INSTALLING TRIVY ==="
-      - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
-      - if [ -f ./bin/trivy ]; then mv ./bin/trivy /usr/local/bin/trivy; fi
+      - echo "=== INSTALLING TRIVY (PINNED) ==="
+      - TRIVY_VERSION="0.55.2"
+      - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+        | sh -s -- -b /usr/local/bin v${TRIVY_VERSION}
       - trivy --version
 
-      - echo "=== INSTALLING TFSEC ==="
-      - curl -sSL https://github.com/aquasecurity/tfsec/releases/latest/download/tfsec-linux-amd64 -o tfsec
+      - echo "=== INSTALLING TFSEC (PINNED) ==="
+      - TFSEC_VERSION="1.28.6"
+      - curl -sSL https://github.com/aquasecurity/tfsec/releases/download/v${TFSEC_VERSION}/tfsec-linux-amd64 -o tfsec
       - chmod +x tfsec
       - mv tfsec /usr/local/bin/tfsec
       - tfsec --version
 
   pre_build:
     commands:
-      - echo "=== MOVE TO SOURCE ==="
+      - echo "=== MOVE TO SOURCE DIRECTORY ==="
       - cd $CODEBUILD_SRC_DIR
 
-      - echo "=== TRIVY CRITICAL SECURITY SCAN ==="
+      - echo "=== TRIVY FILE SYSTEM SCAN (CRITICAL) ==="
       - trivy fs . --severity CRITICAL --exit-code 1
 
-      - echo "=== TFSEC CRITICAL TERRAFORM SCAN ==="
-      - tfsec ./terraform --minimum-severity CRITICAL
+      - echo "=== TFSEC TERRAFORM SCAN (CRITICAL) ==="
+      - if [ -d "terraform" ]; then tfsec ./terraform --minimum-severity CRITICAL; else echo "No terraform directory found, skipping tfsec"; fi
 
   build:
     commands:
       - echo "=== TERRAFORM INIT ==="
       - cd terraform
+
       - terraform init -input=false
 
       - echo "=== TERRAFORM VALIDATE ==="
