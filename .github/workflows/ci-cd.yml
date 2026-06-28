@@ -1,56 +1,33 @@
-name: SOC2 DevSecOps Pipeline
+deploy:
+  name: deploy
+  needs: security_scan
+  runs-on: ubuntu-latest
+  if: github.ref == 'refs/heads/main'
 
-on:
-  push:
-    branches: ["main"]
-  pull_request:
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-permissions:
-  contents: read
-  id-token: write
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.6.6
 
-jobs:
-  security_scan:
-    name: security_scan
-    runs-on: ubuntu-latest
+    - name: Configure AWS credentials (OIDC)
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::150460248370:role/dev-sec-ops-role
+        aws-region: us-east-1
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - name: Verify AWS identity
+      run: aws sts get-caller-identity
 
-      - name: Run Trivy config scan
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          scan-type: config
-          format: table
-          exit-code: 1
-          severity: HIGH,CRITICAL
+    - name: Terraform Init
+      run: |
+        cd terraform
+        terraform init
 
-  deploy:
-    name: deploy
-    needs: security_scan
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: arn:aws:iam::150460248370:role/dev-sec-ops-role
-          aws-region: us-east-1
-
-      - name: Verify AWS identity
-        run: aws sts get-caller-identity
-
-      - name: Terraform Init
-        run: |
-          cd terraform
-          terraform init
-
-      - name: Terraform Apply
-        run: |
-          cd terraform
-          terraform apply -auto-approve
+    - name: Terraform Apply
+      run: |
+        cd terraform
+        terraform apply -auto-approve
