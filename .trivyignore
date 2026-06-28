@@ -1,0 +1,5 @@
+# AWS-0132: S3 encryption should use Customer Managed Keys
+# Exemption: Log bucket uses AES256 as per AWS documentation
+# (KMS is not supported for S3 server access logging destination buckets)
+# Main bucket uses AES256 due to GitHub Actions role IAM constraints
+AVD-AWS-0132
