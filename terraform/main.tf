@@ -29,7 +29,7 @@ resource "aws_kms_key" "s3_key" {
 }
 
 resource "aws_kms_alias" "s3_key" {
-  name          = "alias/s3-encryption-key"
+  name          = "alias/s3-encryption-key-${random_id.suffix.hex}"
   target_key_id = aws_kms_key.s3_key.key_id
 }
 
@@ -76,7 +76,10 @@ resource "aws_s3_bucket_versioning" "log" {
 resource "aws_s3_bucket_server_side_encryption_configuration" "log" {
   bucket = aws_s3_bucket.log_bucket.id
 
-  depends_on = [aws_s3_bucket_versioning.log]
+  depends_on = [
+    aws_s3_bucket_versioning.log,
+    aws_kms_alias.s3_key
+  ]
 
   rule {
     apply_server_side_encryption_by_default {
@@ -174,7 +177,10 @@ resource "aws_s3_bucket_versioning" "main" {
 resource "aws_s3_bucket_server_side_encryption_configuration" "main" {
   bucket = aws_s3_bucket.main.id
 
-  depends_on = [aws_s3_bucket_versioning.main]
+  depends_on = [
+    aws_s3_bucket_versioning.main,
+    aws_kms_alias.s3_key
+  ]
 
   rule {
     apply_server_side_encryption_by_default {
