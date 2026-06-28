@@ -24,10 +24,12 @@ resource "random_id" "suffix" {
 }
 
 # -----------------------------
-# S3 BUCKET
+# S3 BUCKET (BASE)
 # -----------------------------
 resource "aws_s3_bucket" "devsecops_bucket" {
   bucket = "devsecops-demo-bucket-${random_id.suffix.hex}"
+
+  acl = "private"  # FIX #4: explicit ACL enforcement (scanner-safe)
 
   tags = {
     Project     = "devsecops-pipeline"
@@ -37,7 +39,7 @@ resource "aws_s3_bucket" "devsecops_bucket" {
 }
 
 # -----------------------------
-# OWNERSHIP CONTROLS (FORCE FIRST)
+# 1. OWNERSHIP CONTROLS (MUST BE FIRST)
 # -----------------------------
 resource "aws_s3_bucket_ownership_controls" "this" {
   bucket = aws_s3_bucket.devsecops_bucket.id
@@ -48,7 +50,7 @@ resource "aws_s3_bucket_ownership_controls" "this" {
 }
 
 # -----------------------------
-# PUBLIC ACCESS BLOCK (DEPENDENT)
+# 2. PUBLIC ACCESS BLOCK (DEPENDS ON OWNERSHIP)
 # -----------------------------
 resource "aws_s3_bucket_public_access_block" "this" {
   bucket = aws_s3_bucket.devsecops_bucket.id
@@ -64,7 +66,7 @@ resource "aws_s3_bucket_public_access_block" "this" {
 }
 
 # -----------------------------
-# VERSIONING
+# 3. VERSIONING (DEPENDS ON ACCESS BLOCK)
 # -----------------------------
 resource "aws_s3_bucket_versioning" "this" {
   bucket = aws_s3_bucket.devsecops_bucket.id
@@ -79,7 +81,7 @@ resource "aws_s3_bucket_versioning" "this" {
 }
 
 # -----------------------------
-# ENCRYPTION (AES256)
+# 4. ENCRYPTION (DEPENDS ON VERSIONING)
 # -----------------------------
 resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
   bucket = aws_s3_bucket.devsecops_bucket.id
@@ -96,7 +98,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
 }
 
 # -----------------------------
-# HTTPS ONLY POLICY
+# 5. HTTPS-ONLY BUCKET POLICY (LAST STEP)
 # -----------------------------
 resource "aws_s3_bucket_policy" "secure" {
   bucket = aws_s3_bucket.devsecops_bucket.id
