@@ -165,6 +165,8 @@ resource "aws_s3_bucket_public_access_block" "main" {
   restrict_public_buckets = true
 }
 
+resource "aws_s3_bucket_versioning" "this" {
+  bucket = aws_s3_bucket.devsecops_bucket.id
 resource "aws_s3_bucket_versioning" "main" {
   bucket = aws_s3_bucket.main.id
 
@@ -175,6 +177,14 @@ resource "aws_s3_bucket_versioning" "main" {
   }
 }
 
+resource "aws_kms_key" "s3_key" {
+  description         = "S3 encryption key"
+  enable_key_rotation = true
+
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
+  bucket = aws_s3_bucket.devsecops_bucket.id
 resource "aws_s3_bucket_server_side_encryption_configuration" "main" {
   bucket = aws_s3_bucket.main.id
 
@@ -185,6 +195,8 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "main" {
       sse_algorithm     = "aws:kms"
       kms_master_key_id = aws_kms_key.s3_key.arn
     }
+  }
+}
     bucket_key_enabled = true
   }
 }
