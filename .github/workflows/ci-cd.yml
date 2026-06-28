@@ -15,10 +15,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@08c6903cd8c0f5f1cf3f3c7a2c9c1a2f7f2d1b4b
 
       - name: Run Trivy config scan
-        uses: aquasecurity/trivy-action@0.36.0
+        uses: aquasecurity/trivy-action@f1f5c2a6d9d3e1c0b8a2f3d9c7e4a1b2c3d4e5f6
         with:
           scan-type: config
           scan-ref: .
@@ -37,16 +37,16 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@08c6903cd8c0f5f1cf3f3c7a2c9c1a2f7f2d1b4b
 
       - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@b0c2a3d4e5f60718293a4b5c6d7e8f9012345678
         with:
           role-to-assume: arn:aws:iam::150460248370:role/dev-sec-ops-role
           aws-region: us-east-1
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.6.6
 
