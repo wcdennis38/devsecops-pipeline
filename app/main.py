@@ -1,5 +1,6 @@
 import os
 from flask import Flask
+<<<<<<< Updated upstream
 from flask_wtf.csrf import CSRFProtect
 
 app = Flask(__name__)
@@ -25,7 +26,19 @@ def home():
 @app.route("/health")
 def health():
     return {"status": "healthy"}
+=======
 
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return {"message": "DevSecOps app is running"}
+>>>>>>> Stashed changes
+
+# Optional health endpoint (good for Docker/CI)
+@app.route("/health")
+def health():
+    return {"status": "healthy"}
 
 if __name__ == "__main__":
     HOST = os.getenv("HOST", "0.0.0.0")
