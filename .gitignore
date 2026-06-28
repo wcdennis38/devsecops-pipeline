@@ -1,4 +1,11 @@
+# Security & DevSecOps
+
+# Trivy cache
+.trivycache/
+.cache/trivy/
+
 # Terraform
+.terraform/
 *.tfstate
 *.tfstate.*
 .terraform
@@ -7,3 +14,31 @@
 **/.trivycache/
 *.db
 .trivycache/
+*.tfplan
+.terraform.lock.hcl
+
+# Environment secrets
+.env
+.env.*
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Node.js
+node_modules/
+
+# Logs (common leakage risk)
+*.log
+
+# Kubernetes / cloud configs (optional but recommended)
+*.kubeconfig
+kubeconfig
+
+# OS junk
+.DS_Store
+Thumbs.db

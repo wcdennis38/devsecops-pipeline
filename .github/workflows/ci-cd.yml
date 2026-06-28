@@ -1,17 +1,20 @@
-name: DevSecOps CI/CD Pipeline
+name: SOC2 DevSecOps Pipeline
 
 on:
   push:
-    branches: ["main"]
+    branches: [main]
   pull_request:
-    branches: ["main"]
+
+permissions:
+  contents: read
+  id-token: write
 
 jobs:
-  security:
+  security_scan:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Install Trivy
@@ -50,30 +53,47 @@ jobs:
             .
 
   build:
+      - name: Run Trivy config scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: config
+          scan-ref: .
+          format: sarif
+          exit-code: 1
+          severity: HIGH,CRITICAL
+
+  deploy:
+    needs: security_scan
     runs-on: ubuntu-latest
-    needs: security
+    if: github.ref == 'refs/heads/main'
 
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build Docker Image
-        run: |
-          docker build -t devsecops-app:${{ github.sha }} .
-
-  terraform:
-    runs-on: ubuntu-latest
-    needs: security
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::150460248370:role/dev-sec-ops-role
+          aws-region: us-east-1
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
 
       - name: Terraform Init
+        working-directory: terraform
         run: terraform init
 
       - name: Terraform Validate
+        working-directory: terraform
         run: terraform validate
+
+      - name: Terraform Plan
+        working-directory: terraform
+        run: terraform plan -out=tfplan
+
+      - name: Terraform Apply
+        working-directory: terraform
+        run: terraform apply -auto-approve tfplan

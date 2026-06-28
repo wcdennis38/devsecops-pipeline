@@ -3,14 +3,24 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY . .
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+ && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get update && apt-get install -y curl
+# Upgrade pip for reliability
+RUN pip install --no-cache-dir --upgrade pip
 
-RUN pip install -r requirements.txt
+# Install Python dependencies first (better caching)
+COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-RUN useradd -m appuser
-USER appuser
+# Copy application code
+COPY app/ /app/app/
+COPY main.py /app/main.py
+
+# Create non-root user for security
+RUN useradd -m appuser && chown -R appuser:appuser /app
 
 HEALTHCHECK --interval=30s --timeout 5s --retries 3 \
   CMD curl -f http://localhost:8080/health || exit 1
@@ -40,3 +50,13 @@ HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
 
 CMD ["npm", "start"]
         628b635 (Add .dockerignore to prevent sensitive data leakage)
+# Healthcheck (must work before user switch)
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+  CMD curl -f http://localhost:8080/health || exit 1
+
+USER appuser
+
+EXPOSE 8080
+
+# FIXED ENTRYPOINT PATH
+CMD ["python", "/app/main.py"]
