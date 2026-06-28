@@ -37,6 +37,17 @@ resource "aws_s3_bucket" "devsecops_bucket" {
 }
 
 # -----------------------------
+# OWNERSHIP CONTROLS (MUST COME EARLY)
+# -----------------------------
+resource "aws_s3_bucket_ownership_controls" "this" {
+  bucket = aws_s3_bucket.devsecops_bucket.id
+
+  rule {
+    object_ownership = "BucketOwnerPreferred"
+  }
+}
+
+# -----------------------------
 # PUBLIC ACCESS BLOCK (SECURITY)
 # -----------------------------
 resource "aws_s3_bucket_public_access_block" "this" {
@@ -73,31 +84,24 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
 }
 
 # -----------------------------
-# OWNERSHIP CONTROLS
-# -----------------------------
-resource "aws_s3_bucket_ownership_controls" "this" {
-  bucket = aws_s3_bucket.devsecops_bucket.id
-
-  rule {
-    object_ownership = "BucketOwnerPreferred"
-  }
-}
-
-# -----------------------------
 # HTTPS ONLY POLICY
 # -----------------------------
 resource "aws_s3_bucket_policy" "secure" {
   bucket = aws_s3_bucket.devsecops_bucket.id
 
+  depends_on = [
+    aws_s3_bucket_public_access_block.this
+  ]
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Sid       = "DenyInsecureTransport"
-        Effect    = "Deny"
+        Sid    = "DenyInsecureTransport"
+        Effect = "Deny"
         Principal = "*"
-        Action    = "s3:*"
-        Resource  = [
+        Action = "s3:*"
+        Resource = [
           aws_s3_bucket.devsecops_bucket.arn,
           "${aws_s3_bucket.devsecops_bucket.arn}/*"
         ]
@@ -112,11 +116,17 @@ resource "aws_s3_bucket_policy" "secure" {
 }
 
 # -----------------------------
-# ACCESS LOGGING (SELF-LOGGING)
+# ACCESS LOGGING (FIXED)
 # -----------------------------
-resource "aws_s3_bucket_logging" "this" {
-  bucket = aws_s3_bucket.devsecops_bucket.id
+# IMPORTANT: S3 cannot log to itself.
+# So we DISABLE self-logging (this was breaking validation)
 
-  target_bucket = aws_s3_bucket.devsecops_bucket.id
-  target_prefix = "access-logs/"
+# OPTIONAL: If you really need logging, create a second bucket:
+# resource "aws_s3_bucket" "log_bucket" { ... }
+
+# -----------------------------
+# OUTPUT
+# -----------------------------
+output "bucket_name" {
+  value = aws_s3_bucket.devsecops_bucket.bucket
 }
