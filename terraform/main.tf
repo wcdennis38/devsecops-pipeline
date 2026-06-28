@@ -17,34 +17,17 @@ provider "aws" {
 }
 
 # -----------------------------
-# Random suffix
+# RANDOM SUFFIX
 # -----------------------------
 resource "random_id" "suffix" {
   byte_length = 4
 }
 
 # -----------------------------
-# S3 Bucket
+# S3 BUCKET
 # -----------------------------
 resource "aws_s3_bucket" "devsecops_bucket" {
   bucket = "devsecops-demo-bucket-${random_id.suffix.hex}"
-
-resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
-  bucket = aws_s3_bucket.devsecops_bucket.id
-
-  rule {
-    apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
-    }
-  }
-}
-
-  rule {
-    apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
-    }
-  }
-
 
   tags = {
     Project     = "devsecops-pipeline"
@@ -54,7 +37,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
 }
 
 # -----------------------------
-# Public Access Block (SECURITY)
+# PUBLIC ACCESS BLOCK (SECURITY)
 # -----------------------------
 resource "aws_s3_bucket_public_access_block" "this" {
   bucket = aws_s3_bucket.devsecops_bucket.id
@@ -77,20 +60,14 @@ resource "aws_s3_bucket_versioning" "this" {
 }
 
 # -----------------------------
-# ENCRYPTION (AES256 - SIMPLE SSE-S3)
+# SERVER-SIDE ENCRYPTION (AES256)
 # -----------------------------
-resource "aws_kms_key" "s3" {
-  description         = "S3 encryption key"
-  enable_key_rotation = false
-}
-
 resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
   bucket = aws_s3_bucket.devsecops_bucket.id
 
   rule {
     apply_server_side_encryption_by_default {
-      sse_algorithm     = "aws:kms"
-      kms_master_key_id = aws_kms_key.s3.arn
+      sse_algorithm = "AES256"
     }
   }
 }
@@ -135,7 +112,7 @@ resource "aws_s3_bucket_policy" "secure" {
 }
 
 # -----------------------------
-# LOGGING (self-logging)
+# ACCESS LOGGING (SELF-LOGGING)
 # -----------------------------
 resource "aws_s3_bucket_logging" "this" {
   bucket = aws_s3_bucket.devsecops_bucket.id
