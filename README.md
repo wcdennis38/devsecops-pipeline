@@ -1,7 +1,7 @@
 # DevSecOps CI/CD Pipeline
 
 ## Architecture
-GitHub Actions → Docker → Amazon ECR → EC2 Deployment
+![Architecture diagram](images/architecture-diagram.png)
 
 ## Features
 - CI/CD automation
